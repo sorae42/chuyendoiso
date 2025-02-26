@@ -47,7 +47,8 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// For dev and showcases only, uncomment before prod
+//app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
