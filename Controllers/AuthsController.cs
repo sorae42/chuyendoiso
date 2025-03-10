@@ -118,7 +118,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/Auths/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromForm] string password, [FromForm] string username)
+        public IActionResult Login([FromForm] string password, [FromForm] string username)
         {
             var user = _context.Auth.Where(x => x.Username == username).FirstOrDefault();
 
@@ -137,14 +137,6 @@ namespace chuyendoiso.Controllers
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var authProperties = new AuthenticationProperties
-            {
-                AllowRefresh = true,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(60),
-                IsPersistent = true,
-            };
-
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -157,8 +149,6 @@ namespace chuyendoiso.Controllers
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
-
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
 
             return Ok(new { message = "Đăng nhập thành công!", token = tokenString });
         }
@@ -236,7 +226,6 @@ namespace chuyendoiso.Controllers
 
             return Ok(new { message = "Đặt lại mật khẩu thành công!" });
         }
-
 
         private bool AuthExists(int id)
         {

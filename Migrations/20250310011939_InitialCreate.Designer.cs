@@ -11,8 +11,8 @@ using chuyendoiso.Data;
 namespace chuyendoiso.Migrations
 {
     [DbContext(typeof(chuyendoisoContext))]
-    [Migration("20250301023614_AddResetTokenToAuth")]
-    partial class AddResetTokenToAuth
+    [Migration("20250310011939_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
