@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<chuyendoisoContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("chuyendoisoContext") ?? throw new InvalidOperationException("Connection string 'chuyendoisoContext' not found.")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("chuyendoisoContext") ?? throw new InvalidOperationException("Connection string 'chuyendoisoContext' not found.")));
 
 // Config cookie authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
