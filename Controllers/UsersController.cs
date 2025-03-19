@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using chuyendoiso.Data;
 using chuyendoiso.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace chuyendoiso.Controllers
 {
@@ -18,6 +19,7 @@ namespace chuyendoiso.Controllers
 
         // GET: /api/Users
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> Index()
         {
             var users = await _context.Auth.Select( u => new
@@ -35,6 +37,7 @@ namespace chuyendoiso.Controllers
 
         // GET: api/Users/Details/5
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> Details(int id)
         {
             var user = await _context.Auth.FirstOrDefaultAsync(m => m.Id == id);
@@ -48,6 +51,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/Users/Create
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> Create([FromBody] Auth auth)
         {
             if (!ModelState.IsValid)
@@ -64,6 +68,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/Users/Edit/5
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Username,FullName,Password,Email,Phone")] Auth auth)
         {
             if (id != auth.Id)
@@ -101,6 +106,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/Users/Delete/5
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var user = await _context.Auth.FindAsync(id);

@@ -28,6 +28,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/Auths/login
         [HttpPost("login")]
+        [AllowAnonymous]
         public IActionResult Login([FromForm] string password, [FromForm] string username)
         {
             var user = _context.Auth.Where(x => x.Username == username).FirstOrDefault();
@@ -74,6 +75,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/Auths/forgot-password
         [HttpPost("forgot-password")]
+        [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] Dictionary<string, string> request)
         {
             if (!request.ContainsKey("email"))
