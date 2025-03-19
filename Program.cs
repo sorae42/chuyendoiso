@@ -13,7 +13,12 @@ builder.Services.AddDbContext<chuyendoisoContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("chuyendoisoContext") ?? throw new InvalidOperationException("Connection string 'chuyendoisoContext' not found.")));
 
 // Config cookie authentication
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false;
