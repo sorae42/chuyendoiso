@@ -4,7 +4,6 @@ using chuyendoiso.Data;
 using chuyendoiso.Models;
 using Microsoft.AspNetCore.Authorization;
 using chuyendoiso.DTOs;
-using DocumentFormat.OpenXml.Spreadsheet;
 using System.Security.Claims;
 
 namespace chuyendoiso.Controllers
@@ -20,7 +19,7 @@ namespace chuyendoiso.Controllers
             _context = context;
         }
 
-        // GET: /api/Users
+        // GET: /api/users
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> Index()
@@ -38,7 +37,7 @@ namespace chuyendoiso.Controllers
             return Ok(users);
         }
 
-        // GET: api/Users/userid
+        // GET: /api/users/userid
         [Authorize]
         [HttpGet("userid")]
         public IActionResult GetUserId()
@@ -47,7 +46,8 @@ namespace chuyendoiso.Controllers
             return Ok(new { userId });
         }
 
-        // GET: api/Users/5
+        // GET: /api/users/5
+        // Params: Id
         [HttpGet("{id}")]
         [Authorize]
         public async Task<IActionResult> Details(int id)
@@ -66,13 +66,14 @@ namespace chuyendoiso.Controllers
 
             if (user == null)
             {
-                return NotFound(new { message = "User not found!" });
+                return NotFound(new { message = "Không tìm thấy người dùng!" });
             }
 
             return Ok(user);
         }
 
-        // POST: api/Users/Create
+        // POST: /api/users/create
+        // Params: Username, Password, Fullname, Email, Phone
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> Create([FromBody] UserDto dto)
@@ -106,7 +107,8 @@ namespace chuyendoiso.Controllers
             });
         }
 
-        // POST: api/Users/Edit/5
+        // POST: /api/users/edit/5
+        // Params: Id, Username, Password, Fullname, Email, Phone
         [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> Edit(int id, [FromBody] UserDto dto)
@@ -131,6 +133,12 @@ namespace chuyendoiso.Controllers
                 existingUser.Phone = dto.Phone;
 
             if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                if (string.IsNullOrWhiteSpace(dto.OldPassword) || !BCrypt.Net.BCrypt.Verify(dto.OldPassword, existingUser.Password))
+                {
+                    return BadRequest(new { message = "Mật khẩu cũ không chính xác!" });
+                }
+            }
                 existingUser.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
             try
@@ -153,7 +161,8 @@ namespace chuyendoiso.Controllers
             }
         }
 
-        // POST: api/Users/Delete/5
+        // POST: /api/users/delete/5
+        // Params: Id
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteConfirmed(int id)

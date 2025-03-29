@@ -26,7 +26,8 @@ namespace chuyendoiso.Controllers
             _emailSender = emailSender;
         }
 
-        // POST: api/Auths/login
+        // POST: api/auths/login
+        // Params: username, password
         [HttpPost("login")]
         [AllowAnonymous]
         public IActionResult Login([FromForm] string password, [FromForm] string username)
@@ -65,7 +66,7 @@ namespace chuyendoiso.Controllers
             return Ok(new { message = "Đăng nhập thành công!", token = tokenString });
         }
 
-        // POST: api/Auths/logout
+        // POST: api/auths/logout
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -74,7 +75,7 @@ namespace chuyendoiso.Controllers
             return Ok(new { message = "Đăng xuất thành công!" });
         }
 
-        // POST: api/Auths/forgot-password
+        // POST: api/auths/forgot-password
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] Dictionary<string, string> request)
@@ -109,7 +110,7 @@ namespace chuyendoiso.Controllers
             return Ok(new { message = "Email đặt lại mật khẩu đã được gửi!" });
         }
 
-        // POST: api/Auths/reset-password
+        // POST: api/auths/reset-password
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] Dictionary<string, string> request)
         {
