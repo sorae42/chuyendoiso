@@ -74,7 +74,7 @@ namespace chuyendoiso.Controllers
 
         // POST: /api/users/create
         // Params: Username, Password, Fullname, Email, Phone
-        [HttpPost]
+        [HttpPost("create")]
         [Authorize]
         public async Task<IActionResult> Create([FromBody] UserDto dto)
         {

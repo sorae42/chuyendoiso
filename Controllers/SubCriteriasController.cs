@@ -24,6 +24,8 @@ namespace chuyendoiso.Controllers
         }
 
         // GET: /api/subcriterias
+        [HttpGet]
+        [Authorize]
         public async Task<IActionResult> Index()
         {
             var subCriterias = await _context.SubCriteria.ToListAsync();
@@ -49,7 +51,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/subcriterias/create
         // Params: Name, MaxScore, Description, EvidenceInfo
-        [HttpPost]
+        [HttpPost("create")]
         [Authorize]
         public async Task<IActionResult> Create([Bind("Id,Name,MaxScore,Description,EvidenceInfo")] SubCriteria subCriteria)
         {

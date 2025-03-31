@@ -50,7 +50,7 @@ namespace chuyendoiso.Controllers
 
         // POST: /api/parentcriterias/create
         // Params: Name, MaxScore, Description, EvidenceInfo
-        [HttpPost]
+        [HttpPost("create")]
         [Authorize]
         public async Task<IActionResult> Create([FromBody] ParentCriteria parentCriteria)
         {

@@ -45,7 +45,7 @@ namespace chuyendoiso.Controllers
 
         // POST: /api/targetgroups/create
         // Params: Name
-        [HttpPost]
+        [HttpPost("create")]
         [Authorize]
         public async Task<IActionResult> Create([FromBody] TargetGroup targetGroup)
         {
