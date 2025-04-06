@@ -1,6 +1,5 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using chuyendoiso.Data;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using chuyendoiso.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -52,6 +51,12 @@ var emailConfig = builder.Configuration.GetSection("EmailConfiguration").Get<Ema
 builder.Services.AddSingleton(emailConfig);
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 
+// Add service HttpContextAccessor to take IP, Username from HttpContext
+builder.Services.AddHttpContextAccessor();
+
+// Add service LogService to log activity
+builder.Services.AddScoped<LogService>();
+
 builder.Services.AddAuthorization();
 
 // Add services to the container.
@@ -59,15 +64,25 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
+Console.WriteLine("App is building...");
+
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<chuyendoisoContext>();
+    var services = scope.ServiceProvider;
 
-    if (!context.Auth.Any())
+    SeedData.Initialize(services);
+
+    var context = services.GetRequiredService<chuyendoisoContext>();
+
+    if (!context.Auth.Any(u => u.Username == "admin"))
     {
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword("admin123");
+
         context.Auth.Add(new Auth { Username = "admin", Password = hashedPassword, Email = "nhoanghai2003@gmail.com", Phone = "123456789" });
+
         context.SaveChanges();
+
+        Console.WriteLine("Default admin account created.");
     }
 }
 
@@ -87,6 +102,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapControllers();
 
 app.MapControllerRoute(
     name: "default",
