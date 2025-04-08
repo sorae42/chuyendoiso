@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using chuyendoiso.Data;
@@ -11,9 +12,11 @@ using chuyendoiso.Data;
 namespace chuyendoiso.Migrations
 {
     [DbContext(typeof(chuyendoisoContext))]
-    partial class chuyendoisoContextModelSnapshot : ModelSnapshot
+    [Migration("20250329022343_ActionLog")]
+    partial class ActionLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,8 +109,8 @@ namespace chuyendoiso.Migrations
                     b.Property<string>("EvidenceInfo")
                         .HasColumnType("text");
 
-                    b.Property<float?>("MaxScore")
-                        .HasColumnType("real");
+                    b.Property<int>("MaxScore")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -137,8 +140,8 @@ namespace chuyendoiso.Migrations
                     b.Property<string>("EvidenceInfo")
                         .HasColumnType("text");
 
-                    b.Property<float?>("MaxScore")
-                        .HasColumnType("real");
+                    b.Property<int>("MaxScore")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()

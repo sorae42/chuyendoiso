@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using chuyendoiso.Data;
@@ -11,9 +12,11 @@ using chuyendoiso.Data;
 namespace chuyendoiso.Migrations
 {
     [DbContext(typeof(chuyendoisoContext))]
-    partial class chuyendoisoContextModelSnapshot : ModelSnapshot
+    [Migration("20250331042103_ChangeINTtoFLOATinSubCriteria")]
+    partial class ChangeINTtoFLOATinSubCriteria
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,7 +109,7 @@ namespace chuyendoiso.Migrations
                     b.Property<string>("EvidenceInfo")
                         .HasColumnType("text");
 
-                    b.Property<float?>("MaxScore")
+                    b.Property<float>("MaxScore")
                         .HasColumnType("real");
 
                     b.Property<string>("Name")
@@ -137,7 +140,7 @@ namespace chuyendoiso.Migrations
                     b.Property<string>("EvidenceInfo")
                         .HasColumnType("text");
 
-                    b.Property<float?>("MaxScore")
+                    b.Property<float>("MaxScore")
                         .HasColumnType("real");
 
                     b.Property<string>("Name")

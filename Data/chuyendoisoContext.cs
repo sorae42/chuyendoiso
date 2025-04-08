@@ -14,9 +14,10 @@ namespace chuyendoiso.Data
         {
         }
 
-        public DbSet<chuyendoiso.Models.Auth> Auth { get; set; } = default!;
-        public DbSet<chuyendoiso.Models.TargetGroup> TargetGroup { get; set; } = default!;
-        public DbSet<chuyendoiso.Models.ParentCriteria> ParentCriteria { get; set; } = default!;
-        public DbSet<chuyendoiso.Models.SubCriteria> SubCriteria { get; set; } = default!;
+        public DbSet<Auth> Auth { get; set; } = default!;
+        public DbSet<TargetGroup> TargetGroup { get; set; } = default!;
+        public DbSet<ParentCriteria> ParentCriteria { get; set; } = default!;
+        public DbSet<SubCriteria> SubCriteria { get; set; } = default!;
+        public DbSet<ActionLog> ActionLogs { get; set; } = default!;
     }
 }

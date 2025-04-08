@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using chuyendoiso.Data;
 using chuyendoiso.Models;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using chuyendoiso.DTOs;
+using chuyendoiso.Services;
 
 namespace chuyendoiso.Controllers
 {
@@ -16,22 +14,35 @@ namespace chuyendoiso.Controllers
     public class ParentCriteriasController : Controller
     {
         private readonly chuyendoisoContext _context;
+        private readonly LogService _logService;
 
-        public ParentCriteriasController(chuyendoisoContext context)
+        public ParentCriteriasController(chuyendoisoContext context, LogService logService)
         {
             _context = context;
+            _logService = logService;
         }
 
-        // GET: /api/parentcriterias
+        // GET: api/parentcriterias
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> Index()
         {
-            var parentCriterias = await _context.ParentCriteria.ToListAsync();
+            var parentCriterias = await _context.ParentCriteria
+                .Include(p => p.TargetGroup)
+                .Include(p => p.SubCriterias)
+                .Select(p => new {
+                    p.Id,
+                    p.Name,
+                    p.MaxScore,
+                    GroupId = p.TargetGroup.Id,
+                    SubCriteriaId = p.SubCriterias.Select(s => s.Id)
+                })
+                .ToListAsync();
+
             return Ok(parentCriterias);
         }
 
-        // GET: /api/parentcriterias/5
+        // GET: api/parentcriterias/id
         // Params: Id
         [HttpGet("{id}")]
         [Authorize]
@@ -48,88 +59,112 @@ namespace chuyendoiso.Controllers
             return Ok(parentCriteria);
         }
 
-        // POST: /api/parentcriterias/create
-        // Params: Name, MaxScore, Description, EvidenceInfo
+        // POST: api/parentcriterias/create
+        // Params: Name, MaxScore, Description, TargetGroupId, EvidenceInfo
         [HttpPost("create")]
         [Authorize]
-        public async Task<IActionResult> Create([FromBody] ParentCriteria parentCriteria)
+        public async Task<IActionResult> Create([FromBody] ParentCriteriaDto dto)
         {
-            if (!ModelState.IsValid)
+            if (string.IsNullOrWhiteSpace(dto.Name) || dto.MaxScore == null || string.IsNullOrWhiteSpace(dto.TargetGroupName))
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Tên tiêu chí, điểm tối đa và nhóm tiêu chí là bắt buộc!" });
             }
 
-            _context.ParentCriteria.Add(parentCriteria);
+            var group = await _context.TargetGroup.FirstOrDefaultAsync(g => g.Name == dto.TargetGroupName);
+            if (group == null)
+                return BadRequest(new { message = "Không tìm thấy nhóm chỉ tiêu!" });
+
+            var parent = new ParentCriteria
+            {
+                Name = dto.Name,
+                MaxScore = dto.MaxScore.Value,
+                Description = dto.Description,
+                EvidenceInfo = dto.EvidenceInfo,
+                TargetGroupId = group.Id
+            };
+
+            _context.ParentCriteria.Add(parent);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(Details), new { id = parentCriteria.Id}, new
+            await _logService.WriteLogAsync("Create", $"Tạo tiêu chí cha: {parent.Name} (ID = {parent.Id}) thuộc nhóm: {group.Name} ({group.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return CreatedAtAction(nameof(Details), new { id = parent.Id}, new
             {
-                parentCriteria.Id,
-                parentCriteria.Name,
-                parentCriteria.MaxScore,
-                parentCriteria.Description,
-                parentCriteria.EvidenceInfo
+                parent.Id,
+                parent.Name,
+                parent.MaxScore,
+                parent.Description,
+                parent.EvidenceInfo,
+                Group = group.Name
             });
         }
 
-        // POST: /api/parentcriterias/edit/5
-        // Params: Id, Name, MaxScore, Description, EvidenceInfo
+        // PUT: api/parentcriterias/id
+        // Params: Id, Name, MaxScore, Description, TargetGroupId, EvidenceInfo
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> Edit(int id, [FromBody] ParentCriteria parentCriteria)
+        public async Task<IActionResult> Edit(int id, [FromBody] ParentCriteriaDto dto)
         {
-            if (id != parentCriteria.Id)
-            {
-                return BadRequest(new { message = "ID không khớp!" });
-            }
+            var existing = await _context.ParentCriteria.Include(p => p.TargetGroup).FirstOrDefaultAsync(p => p.Id == id);
+            if (existing == null)
+                return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
 
-            var existingParentCriteria = await _context.ParentCriteria.FindAsync(id);
-            if (existingParentCriteria == null)
-            {
-                return NotFound(new { message = "Không tìm thấy nhóm chỉ tiêu!" });
-            }
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                existing.Name = dto.Name;
 
-            existingParentCriteria.Name = parentCriteria.Name;
+            if (dto.MaxScore.HasValue)
+                existing.MaxScore = dto.MaxScore.Value;
 
-            try
-            {
-                _context.ParentCriteria.Update(existingParentCriteria);
-                await _context.SaveChangesAsync();
+            if (!string.IsNullOrWhiteSpace(dto.Description))
+                existing.Description = dto.Description;
 
-                return Ok(new
-                {
-                    message = "Cập nhật thành công!",
-                    data = new
-                    {
-                        existingParentCriteria.Id,
-                        existingParentCriteria.Name,
-                        existingParentCriteria.MaxScore,
-                        existingParentCriteria.Description,
-                        existingParentCriteria.EvidenceInfo
-                    }
-                });
-            }
-            catch (DbUpdateConcurrencyException)
+            if (!string.IsNullOrWhiteSpace(dto.EvidenceInfo))
+                existing.EvidenceInfo = dto.EvidenceInfo;
+
+            if (!string.IsNullOrWhiteSpace(dto.TargetGroupName))
             {
-                return BadRequest(new { message = "Cập nhật thất bại!" });
-            }
+                var group = await _context.TargetGroup.FirstOrDefaultAsync(g => g.Name == dto.TargetGroupName);
+                if (group == null)
+                    return BadRequest(new { message = "Tên nhóm không tồn tại!" });
+
+                existing.TargetGroupId = group.Id;
+            }   
+
+            await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Update", $"Cập nhật tiêu chí cha: {existing.Name} (ID = {existing.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new { message = "Cập nhật thành công!" });
         }
 
-        // POST: /api/parentcriterias/delete/5
+        // DELETE: api/parentcriterias/id
         // Params: Id
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var parentCriteria = await _context.ParentCriteria.FindAsync(id);
+            var parentCriteria = await _context.ParentCriteria
+                .Include(p => p.SubCriterias)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (parentCriteria == null)
-            {
-                return NotFound(new { message = "Không tìm thấy nhóm!" });
-            }
+                return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
+
+            if (parentCriteria.SubCriterias != null && parentCriteria.SubCriterias.Any())
+                return BadRequest(new { message = "Không thể xóa vì tiêu chí cha đang chứa tiêu chí con!" });
+
+            if (parentCriteria.MaxScore > 0)
+                return BadRequest(new { message = "Không thể xóa vì tiêu chí cha đã được chấm điểm!" });
+
+            if (parentCriteria.SubCriterias.Any(s => s.MaxScore > 0))
+                return BadRequest(new { message = "Không thể xóa vì tiêu chí con đã được chấm điểm!" });
 
             _context.ParentCriteria.Remove(parentCriteria);
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Xóa nhóm chỉ tiêu thành công!" });
+
+            await _logService.WriteLogAsync("Delete", $"Xóa tiêu chí cha: {parentCriteria.Name} (ID = {parentCriteria.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new { message = "Xóa tiêu chí cha thành công!" });
         }
     }
 }

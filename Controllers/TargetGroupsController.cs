@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using chuyendoiso.Data;
 using chuyendoiso.Models;
 using Microsoft.AspNetCore.Authorization;
+using chuyendoiso.Services;
+using DocumentFormat.OpenXml.Spreadsheet;
+using System.Security.Claims;
 
 namespace chuyendoiso.Controllers
 {
@@ -11,22 +14,32 @@ namespace chuyendoiso.Controllers
     public class TargetGroupsController : Controller
     {
         private readonly chuyendoisoContext _context;
+        private readonly LogService _logService;
 
-        public TargetGroupsController(chuyendoisoContext context)
+        public TargetGroupsController(chuyendoisoContext context, LogService logService)
         {
             _context = context;
+            _logService = logService;
         }
 
-        // GET: /api/targetgroups
+        // GET: api/targetgroups
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> Index()
         {
-            var targetGroups = await _context.TargetGroup.ToListAsync();
+            var targetGroups = await _context.TargetGroup
+                .Include(t => t.ParentCriterias)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Name,
+                    ParentCriterias = t.ParentCriterias.Select(p => p.Id)
+                })
+                .ToListAsync();
             return Ok(targetGroups);
         }
 
-        // GET: /api/targetgroups/5
+        // GET: api/targetgroups/id
         // Params: Id
         [HttpGet("{id}")]
         [Authorize]
@@ -43,7 +56,7 @@ namespace chuyendoiso.Controllers
             return Ok(targetGroup);
         }
 
-        // POST: /api/targetgroups/create
+        // POST: api/targetgroups/create
         // Params: Name
         [HttpPost("create")]
         [Authorize]
@@ -53,9 +66,9 @@ namespace chuyendoiso.Controllers
             {
                 return BadRequest(ModelState);
             }
-
             _context.TargetGroup.Add(targetGroup);
             await _context.SaveChangesAsync();
+            await _logService.WriteLogAsync("Create", $"Tạo nhóm chỉ tiêu mới: {targetGroup.Name} (ID = {targetGroup.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
             return CreatedAtAction(nameof(Details), new { id = targetGroup.Id}, new
             {
@@ -64,7 +77,7 @@ namespace chuyendoiso.Controllers
             });
         }
 
-        // POST: /api/targetgroups/edit/5
+        // PUT: api/targetgroups/id
         // Params: Id, Name
         [HttpPut("{id}")]
         [Authorize]
@@ -87,6 +100,7 @@ namespace chuyendoiso.Controllers
             {
                 _context.TargetGroup.Update(existingTargetGroup);
                 await _context.SaveChangesAsync();
+                await _logService.WriteLogAsync("Update", $"Cập nhật nhóm chỉ tiêu: {existingTargetGroup.Name} (ID = {existingTargetGroup.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
                 return Ok(new
                 {
@@ -104,7 +118,7 @@ namespace chuyendoiso.Controllers
             }
         }
 
-        // POST: /api/targetgroups/delete/5
+        // DELETE: api/targetgroups/id
         // Params: Id
         [HttpDelete("{id}")]
         [Authorize]
@@ -118,6 +132,8 @@ namespace chuyendoiso.Controllers
 
             _context.TargetGroup.Remove(targetGroup);
             await _context.SaveChangesAsync();
+            await _logService.WriteLogAsync("Delete", $"Xóa nhóm chỉ tiêu: {targetGroup.Name} (ID = {targetGroup.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return Ok(new { message = "Xóa nhóm thành công!" });
         }
     }

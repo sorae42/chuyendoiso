@@ -5,6 +5,7 @@ using chuyendoiso.Models;
 using Microsoft.AspNetCore.Authorization;
 using chuyendoiso.DTOs;
 using System.Security.Claims;
+using chuyendoiso.Services;
 
 namespace chuyendoiso.Controllers
 {
@@ -13,13 +14,15 @@ namespace chuyendoiso.Controllers
     public class UsersController : Controller
     {
         private readonly chuyendoisoContext _context;
+        private readonly LogService _logService;
 
-        public UsersController(chuyendoisoContext context)
+        public UsersController(chuyendoisoContext context, LogService logService)
         {
             _context = context;
+            _logService = logService;
         }
 
-        // GET: /api/users
+        // GET: api/users
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> Index()
@@ -37,7 +40,7 @@ namespace chuyendoiso.Controllers
             return Ok(users);
         }
 
-        // GET: /api/users/userid
+        // GET: api/users/userid
         [Authorize]
         [HttpGet("userid")]
         public IActionResult GetUserId()
@@ -46,7 +49,7 @@ namespace chuyendoiso.Controllers
             return Ok(new { userId });
         }
 
-        // GET: /api/users/5
+        // GET: api/users/id
         // Params: Id
         [HttpGet("{id}")]
         [Authorize]
@@ -72,7 +75,7 @@ namespace chuyendoiso.Controllers
             return Ok(user);
         }
 
-        // POST: /api/users/create
+        // POST: api/users/create
         // Params: Username, Password, Fullname, Email, Phone
         [HttpPost("create")]
         [Authorize]
@@ -93,13 +96,13 @@ namespace chuyendoiso.Controllers
                 Email = dto.Email,
                 Phone = dto.Phone
             };
-
             _context.Auth.Add(user);
             await _context.SaveChangesAsync();
+            await _logService.WriteLogAsync("Create", $"Tạo người dùng mới: {user.Username} (ID = {user.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
             return CreatedAtAction(nameof(Details), new { id = user.Id }, new 
             {
-                user.Id,
+                user.Id,    
                 user.Username,
                 user.FullName,
                 user.Email,
@@ -107,7 +110,7 @@ namespace chuyendoiso.Controllers
             });
         }
 
-        // POST: /api/users/edit/5
+        // PUT: api/users/id
         // Params: Id, Username, Password, Fullname, Email, Phone
         [HttpPut("{id}")]
         [Authorize]
@@ -145,6 +148,7 @@ namespace chuyendoiso.Controllers
             {
                 _context.Update(existingUser);
                 await _context.SaveChangesAsync();
+                await _logService.WriteLogAsync("Update", $"Cập nhật người dùng: {existingUser.Username} (ID = {existingUser.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
                 return Ok(new
                 {
@@ -161,7 +165,7 @@ namespace chuyendoiso.Controllers
             }
         }
 
-        // POST: /api/users/delete/5
+        // DELETE: api/users/id
         // Params: Id
         [HttpDelete("{id}")]
         [Authorize]
@@ -175,6 +179,8 @@ namespace chuyendoiso.Controllers
 
             _context.Auth.Remove(user);
             await _context.SaveChangesAsync();
+            await _logService.WriteLogAsync("Delete", $"Xóa người dùng: {user.Username} (ID = {user.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return Ok(new { message = "Xóa người dùng thành công!" });
         }
     }

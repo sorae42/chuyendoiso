@@ -1,13 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using chuyendoiso.Data;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using chuyendoiso.Interface;
+using chuyendoiso.Services;
 
 namespace chuyendoiso.Controllers
 {
@@ -18,19 +17,21 @@ namespace chuyendoiso.Controllers
         private readonly chuyendoisoContext _context;
         private readonly IConfiguration _configuration;
         private readonly IEmailSender _emailSender;
+        private readonly LogService _logService;
 
-        public AuthsController(chuyendoisoContext context, IConfiguration configuration, IEmailSender emailSender)
+        public AuthsController(chuyendoisoContext context, IConfiguration configuration, IEmailSender emailSender, LogService logService)
         {
             _context = context;
             _configuration = configuration;
             _emailSender = emailSender;
+            _logService = logService;
         }
 
         // POST: api/auths/login
         // Params: username, password
         [HttpPost("login")]
         [AllowAnonymous]
-        public IActionResult Login([FromForm] string password, [FromForm] string username)
+        public async Task<IActionResult> LoginAsync([FromForm] string password, [FromForm] string username)
         {
             var user = _context.Auth.Where(x => x.Username == username).FirstOrDefault();
 
@@ -63,6 +64,8 @@ namespace chuyendoiso.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
+            await _logService.WriteLogAsync("Login", $"Đăng nhập thành công", user.Username);
+
             return Ok(new { message = "Đăng nhập thành công!", token = tokenString });
         }
 
@@ -71,7 +74,10 @@ namespace chuyendoiso.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            var username = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+
+            await _logService.WriteLogAsync("Logout", $"Tài khoản {username} đã đăng xuất", username);
+
             return Ok(new { message = "Đăng xuất thành công!" });
         }
 
