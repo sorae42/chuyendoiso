@@ -49,6 +49,15 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> Details(int? id)
         {
             var parentCriteria = await _context.ParentCriteria
+                .Include(p => p.TargetGroup)
+                .Include(p => p.SubCriterias)
+                .Select(p => new {
+                    p.Id,
+                    p.Name,
+                    p.MaxScore,
+                    GroupId = p.TargetGroup.Id,
+                    p.SubCriterias
+                })
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (parentCriteria == null)

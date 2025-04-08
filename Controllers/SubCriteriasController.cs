@@ -53,6 +53,14 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> Details(int? id)
         {
             var subCriteria = await _context.SubCriteria
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.MaxScore,
+                    p.Description,
+                    p.EvidenceInfo
+                })
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (subCriteria == null)
