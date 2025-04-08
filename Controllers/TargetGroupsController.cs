@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using chuyendoiso.Services;
 using DocumentFormat.OpenXml.Spreadsheet;
 using System.Security.Claims;
+using chuyendoiso.DTOs;
 
 namespace chuyendoiso.Controllers
 {
@@ -60,17 +61,24 @@ namespace chuyendoiso.Controllers
         // Params: Name
         [HttpPost("create")]
         [Authorize]
-        public async Task<IActionResult> Create([FromBody] TargetGroup targetGroup)
+        public async Task<IActionResult> Create([FromBody] TargetGroupDto dto)
         {
-            if (!ModelState.IsValid)
+            if (string.IsNullOrWhiteSpace(dto.Name))
             {
-                return BadRequest(ModelState);
+                return BadRequest(new { message = "Tên nhóm không được để trống!" });
             }
+
+            var targetGroup = new TargetGroup
+            {
+                Name = dto.Name
+            };
+
             _context.TargetGroup.Add(targetGroup);
             await _context.SaveChangesAsync();
+
             await _logService.WriteLogAsync("Create", $"Tạo nhóm chỉ tiêu mới: {targetGroup.Name} (ID = {targetGroup.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
-            return CreatedAtAction(nameof(Details), new { id = targetGroup.Id}, new
+            return CreatedAtAction(nameof(Details), new { id = targetGroup.Id }, new
             {
                 targetGroup.Id,
                 targetGroup.Name
@@ -81,25 +89,23 @@ namespace chuyendoiso.Controllers
         // Params: Id, Name
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> Edit(int id, [FromBody] TargetGroup targetGroup)
+        public async Task<IActionResult> Edit(int id, [FromBody] TargetGroupDto dto)
         {
-            if (id != targetGroup.Id)
-            {
-                return BadRequest(new { message = "ID không khớp!" });
-            }
-
             var existingTargetGroup = await _context.TargetGroup.FindAsync(id);
             if (existingTargetGroup == null)
             {
                 return NotFound(new { message = "Không tìm thấy nhóm!" });
             }
 
-            existingTargetGroup.Name = targetGroup.Name;
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                existingTargetGroup.Name = dto.Name;
+            }
 
             try
             {
-                _context.TargetGroup.Update(existingTargetGroup);
                 await _context.SaveChangesAsync();
+
                 await _logService.WriteLogAsync("Update", $"Cập nhật nhóm chỉ tiêu: {existingTargetGroup.Name} (ID = {existingTargetGroup.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
                 return Ok(new
