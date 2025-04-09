@@ -30,13 +30,29 @@ namespace chuyendoiso.Controllers
         {
             var targetGroups = await _context.TargetGroup
                 .Include(t => t.ParentCriterias)
+                    .ThenInclude(p => p.SubCriterias)
                 .Select(t => new
                 {
                     t.Id,
                     t.Name,
-                    ParentCriterias = t.ParentCriterias.Select(p => p.Id)
+                    ParentCriterias = t.ParentCriterias.Select(p => new
+                    {
+                        p.Id,
+                        p.Name,
+                        p.MaxScore,
+                        p.Description,
+                        p.EvidenceInfo,
+                        SubCriterias = p.SubCriterias.Select(s => new
+                        {
+                            s.Id,
+                            s.Name,
+                            s.MaxScore,
+                            s.EvidenceInfo
+                        }).ToList()
+                    }).ToList()
                 })
                 .ToListAsync();
+
             return Ok(targetGroups);
         }
 
