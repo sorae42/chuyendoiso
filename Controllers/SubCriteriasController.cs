@@ -15,6 +15,7 @@ namespace chuyendoiso.Controllers
     {
         private readonly chuyendoisoContext _context;
         private readonly LogService _logService;
+        List<object> results;
 
         public SubCriteriasController(chuyendoisoContext context, LogService logService)
         {
@@ -34,13 +35,8 @@ namespace chuyendoiso.Controllers
                     p.Id,
                     p.Name,
                     p.MaxScore,
-                    p.Description,
-                    p.EvidenceInfo,
-                    Parent = new
-                    {
-                        ParentId = p.ParentCriteria.Id,
-                        ParentName = p.ParentCriteria.Name
-                    }
+                    p.EvidenceInfo
+
                 })
                 .ToListAsync();
             return Ok(subCriterias);
@@ -59,7 +55,13 @@ namespace chuyendoiso.Controllers
                     p.Name,
                     p.MaxScore,
                     p.Description,
-                    p.EvidenceInfo
+                    p.EvidenceInfo,
+                    Parent = new
+                    {
+                        p.ParentCriteria.Id,
+                        p.ParentCriteria.Name
+                    },
+                    p.EvaluatedAt
                 })
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -83,6 +85,8 @@ namespace chuyendoiso.Controllers
             }
 
             var parent = await _context.ParentCriteria.FirstOrDefaultAsync(g => g.Name == dto.ParentCriteriaName);
+            var unit = User.FindFirst("Unit")?.Value ?? "Không rõ đơn vị";
+
             if (parent == null)
                 return BadRequest(new { message = "Không tìm thấy chỉ tiêu cha!" });
 
@@ -92,7 +96,9 @@ namespace chuyendoiso.Controllers
                 MaxScore = dto.MaxScore.Value,
                 Description = dto.Description,
                 EvidenceInfo = dto.EvidenceInfo,
-                ParentCriteriaId = parent.Id
+                ParentCriteriaId = parent.Id,
+                UnitEvaluate = unit,
+                EvaluatedAt = dto.EvaluatedAt ?? DateTime.Now
             };
 
             _context.SubCriteria.Add(subCriteria);
@@ -100,14 +106,14 @@ namespace chuyendoiso.Controllers
 
             await _logService.WriteLogAsync("Create", $"Tạo tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id}) thuộc chỉ tiêu cha: {parent.Name} ({parent.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
-            return CreatedAtAction(nameof(Details), new { id = subCriteria.Id}, new
+            return CreatedAtAction(nameof(Details), new { id = subCriteria.Id }, new
             {
                 subCriteria.Id,
                 subCriteria.Name,
                 subCriteria.MaxScore,
                 subCriteria.Description,
                 subCriteria.EvidenceInfo,
-                Parent = parent.Name
+                Parent = parent.Name,
             });
         }
 
@@ -118,6 +124,17 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> Edit(int id, [FromBody] SubCriteriaDto dto)
         {
             var exsiting = await _context.SubCriteria.Include(p => p.ParentCriteria).FirstOrDefaultAsync(p => p.Id == id);
+            var role = User.FindFirst("Role")?.Value;
+            var unit = User.FindFirst("Unit")?.Value;
+
+            if (exsiting == null)
+                return NotFound(new { message = "Không tìm thấy tiêu chí con!" });
+
+            if (role != "admin" && exsiting.UnitEvaluate != unit)
+            {
+                return Forbid("Bạn không có quyền chỉnh sửa tiêu chí của đơn vị khác.");
+            }
+
             if (exsiting == null)
                 return NotFound(new { message = "Không tìm thấy tiêu chí con!" });
 
@@ -140,6 +157,9 @@ namespace chuyendoiso.Controllers
                     return BadRequest(new { message = "Không tìm thấy chỉ tiêu cha!" });
                 exsiting.ParentCriteriaId = parent.Id;
             }
+
+            if (dto.EvaluatedAt.HasValue)
+                exsiting.EvaluatedAt = dto.EvaluatedAt.Value;
 
             await _context.SaveChangesAsync();
 
@@ -171,5 +191,58 @@ namespace chuyendoiso.Controllers
 
             return Ok(new { message = "Xóa nhóm chỉ tiêu thành công!" });
         }
+
+        // GET: api/subcriterias/by-year?year={year}
+        [HttpGet("by-year")]
+        [Authorize]
+        public async Task<IActionResult> GetByYear([FromQuery] int? year)
+        {
+            int targetYear = year ?? DateTime.Now.Year;
+
+            var role = User.FindFirst("Role")?.Value;
+            var unit = User.FindFirst("Unit")?.Value;
+
+            var query = _context.SubCriteria
+                .Include(p => p.ParentCriteria)
+                .Where(p => p.EvaluatedAt != null && p.EvaluatedAt.Value.Year == targetYear);
+
+            if (role != "admin")
+            {
+                query = query.Where(p => p.UnitEvaluate == unit);
+            }
+
+            if (role == "admin")
+            {
+                results = await query
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.Name,
+                        p.MaxScore,
+                        p.EvidenceInfo,
+                        p.EvaluatedAt,
+                        p.UnitEvaluate,
+                        Parent = new { p.ParentCriteria.Id, p.ParentCriteria.Name }
+                    })
+                    .ToListAsync<object>();
+            }
+            else
+            {
+                results = await query
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.Name,
+                        p.MaxScore,
+                        p.EvidenceInfo,
+                        p.EvaluatedAt,
+                        Parent = new { p.ParentCriteria.Id, p.ParentCriteria.Name }
+                    })
+                    .ToListAsync<object>();
+            }
+
+            return Ok(results);
+        }
+
     }
 }

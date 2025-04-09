@@ -78,7 +78,15 @@ using (var scope = app.Services.CreateScope())
     {
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword("admin123");
 
-        context.Auth.Add(new Auth { Username = "admin", Password = hashedPassword, Email = "nhoanghai2003@gmail.com", Phone = "123456789" });
+        context.Auth.Add(new Auth 
+        { 
+            Username = "admin", 
+            Password = hashedPassword, 
+            Email = "nhoanghai2003@gmail.com", 
+            Phone = "123456789",
+            Role = "admin",
+            Unit = "LIHANET",
+        });
 
         context.SaveChanges();
 

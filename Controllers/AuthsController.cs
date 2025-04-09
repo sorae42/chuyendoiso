@@ -48,6 +48,8 @@ namespace chuyendoiso.Controllers
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
+                new Claim("Role", user.Role),
+                new Claim("Unit", user.Unit ?? ""),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
@@ -118,7 +120,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/auths/reset-password
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] Dictionary<string, string> request)
+        public IActionResult ResetPassword([FromBody] Dictionary<string, string> request)
         {
             if (!request.ContainsKey("token") || !request.ContainsKey("newPassword"))
             {

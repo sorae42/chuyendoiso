@@ -5,6 +5,11 @@ namespace chuyendoiso.Models
 {
     public class SeedData
     {
+        private static DateTime UtcDate(int year, int month, int day)
+        {
+            return DateTime.SpecifyKind(new DateTime(year, month, day), DateTimeKind.Utc);
+        }
+
         public static void Initialize(IServiceProvider serviceProvider)
         {
             using (var context = new chuyendoisoContext(
@@ -21,7 +26,9 @@ namespace chuyendoiso.Models
                             Password = BCrypt.Net.BCrypt.HashPassword("sogtvt123"),
                             FullName = "Sở Giao thông Vận tải Khánh Hòa",
                             Email = "sogtvt@khanhhoa.gov.vn",
-                            Phone = "02583889999"
+                            Phone = "02583889999",
+                            Role = "user",
+                            Unit = "Tỉnh Khánh Hòa"
                         },
                         new Auth
                         {
@@ -29,7 +36,9 @@ namespace chuyendoiso.Models
                             Password = BCrypt.Net.BCrypt.HashPassword("dienkhanh123"),
                             FullName = "Phòng CĐS Huyện Diên Khánh",
                             Email = "cds@dienkhanh.gov.vn",
-                            Phone = "02583778899"
+                            Phone = "02583778899",
+                            Role = "user",
+                            Unit = "Huyện Diên Khánh"
                         },
                         new Auth
                         {
@@ -37,7 +46,9 @@ namespace chuyendoiso.Models
                             Password = BCrypt.Net.BCrypt.HashPassword("nhatrang123"),
                             FullName = "Phòng Chuyển đổi số - TP Nha Trang",
                             Email = "cds@nhatrang.gov.vn",
-                            Phone = "02583556677"
+                            Phone = "02583556677",
+                            Role = "user",
+                            Unit = "TP Nha Trang"
                         }
                     );
                     context.SaveChanges();
@@ -90,7 +101,9 @@ namespace chuyendoiso.Models
                             MaxScore = 30,
                             Description = "Cổng dịch vụ công cấp tỉnh.",
                             ParentCriteriaId = 1,
-                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "Tỉnh Khánh Hòa",
+                            EvaluatedAt = UtcDate(2022, 3, 10)
                         },
                         new SubCriteria 
                         {   
@@ -98,7 +111,9 @@ namespace chuyendoiso.Models
                             MaxScore = 20,
                             Description = "CHệ thống giám sát, đo lường mức độ cung cấp và sử dụng dịch vụ Chính phủ số.",
                             ParentCriteriaId = 1,
-                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "Tỉnh Khánh Hòa",
+                            EvaluatedAt = UtcDate(2022, 7, 5)
                         },
                         new SubCriteria 
                         { 
@@ -106,7 +121,9 @@ namespace chuyendoiso.Models
                             MaxScore = 70,
                             Description = "Tỷ lệ phần trăm của số văn bản được xử lý trên phần mềm quản lý văn bản và điều hành trên tổng số văn bản đến và đi của cơ quan cấp xã.",
                             ParentCriteriaId = 1,
-                            EvidenceInfo = "- Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.\n- Nghị quyết số 01/NQ- CP ngày 05/01/2024 của Chính phủ."
+                            EvidenceInfo = "- Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.\n- Nghị quyết số 01/NQ- CP ngày 05/01/2024 của Chính phủ.",
+                            UnitEvaluate = "Huyện Diên Khánh",
+                            EvaluatedAt = UtcDate(2022, 12, 28)
                         },
                         new SubCriteria
                         {
@@ -114,7 +131,9 @@ namespace chuyendoiso.Models
                             MaxScore = 30,
                             Description = "Tỷ lệ phần trăm số doanh nghiệp nhỏ và vừa có sử dụng nền tảng số phục vụ sản xuất, kinh doanh trên tổng số doanh nghiệp nhỏ và vừa trên địa bàn xã.",
                             ParentCriteriaId = 2,
-                            EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "TP Nha Trang",
+                            EvaluatedAt = UtcDate(2023, 1, 15)
                         },
                         new SubCriteria
                         {
@@ -122,7 +141,9 @@ namespace chuyendoiso.Models
                             MaxScore = 40,
                             Description = "Tỷ lệ phần trăm của số thành viên của hợp tác xã, doanh nghiệp được định hướng, tập huấn ứng dụng công nghệ số phục vụ sản xuất, kinh doanh trên tổng số thành viên của hợp tác xã, doanh nghiệp trên địa bàn xã.",
                             ParentCriteriaId = 2,
-                            EvidenceInfo = "Công văn số 3445/BNN- VPĐP ngày 29/5/2023 của Bộ Nông nghiệp và Phát triển nông thôn."
+                            EvidenceInfo = "Công văn số 3445/BNN- VPĐP ngày 29/5/2023 của Bộ Nông nghiệp và Phát triển nông thôn.",
+                            UnitEvaluate = "Huyện Diên Khánh",
+                            EvaluatedAt = UtcDate(2023, 5, 20)
                         },
                         new SubCriteria
                         {
@@ -130,7 +151,9 @@ namespace chuyendoiso.Models
                             MaxScore = 50,
                             Description = "Tỷ lệ phần trăm dân số trưởng thành từ 15 tuổi trở lên có điện thoại thông minh trên tổng dân số từ 15 tuổi trở lên tại địa phương cấp xã.",
                             ParentCriteriaId = 3,
-                            EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "TP Nha Trang",
+                            EvaluatedAt = UtcDate(2023, 8, 12)
                         },
                         new SubCriteria
                         {
@@ -138,7 +161,9 @@ namespace chuyendoiso.Models
                             MaxScore = 10,
                             Description = "Tỷ lệ phần trăm của số hộ gia đình được phủ mạng Internet băng rộng cáp quang trên tổng số hộ gia đình tại địa phương cấp xã.",
                             ParentCriteriaId = 3,
-                            EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "TP Nha Trang",
+                            EvaluatedAt = UtcDate(2023, 11, 30)
                         },
                         new SubCriteria
                         {
@@ -150,7 +175,8 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ thủ tục hành chính đủ điều kiện theo quy định của pháp luật được cung cấp dưới hình thức dịch vụ công trực tuyến toàn trình.",
                             Description = "Cổng dịch vụ công cấp tỉnh.",
                             ParentCriteriaId = 5,
-                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "Tỉnh Khánh Hòa"
                         },
                         new SubCriteria
                         {
@@ -158,7 +184,9 @@ namespace chuyendoiso.Models
                             MaxScore = 30,
                             Description = "Hệ thống giám sát, đo lường mức độ cung cấp và sử dụng dịch vụ Chính phủ số.",
                             ParentCriteriaId = 5,
-                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "Huyện Diên Khánh",
+                            EvaluatedAt = UtcDate(2024, 4, 25)
                         },
                         new SubCriteria
                         {
@@ -166,7 +194,9 @@ namespace chuyendoiso.Models
                             MaxScore = 20,
                             Description = "Tỷ lệ phần trăm của số doanh nghiệp nhỏ và vừa có sử dụng nền tảng số phục vụ sản xuất, kinh doanh trên tổng số doanh nghiệp nhỏ và vừa trên địa bàn huyện.",
                             ParentCriteriaId = 6,
-                            EvidenceInfo = "Quyết định số 411/QĐ-TTg ngày 31/3/2022 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 411/QĐ-TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "TP Nha Trang",
+                            EvaluatedAt = UtcDate(2024, 12, 5)
                         },
                         new SubCriteria
                         {
@@ -174,7 +204,9 @@ namespace chuyendoiso.Models
                             MaxScore = 20,
                             Description = "Tỷ lệ phần trăm của số doanh nghiệp, hợp tác xã có sử dụng hợp đồng điện tử trên tổng số doanh nghiệp, hợp tác xã trên địa bàn huyện.",
                             ParentCriteriaId = 6,
-                            EvidenceInfo = "Quyết định số 411/QĐ-TTg ngày 31/3/2022 của Thủ tướng Chính phủ."
+                            EvidenceInfo = "Quyết định số 411/QĐ-TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
+                            UnitEvaluate = "TP Nha Trang",
+                            EvaluatedAt = UtcDate(2025, 4, 1)
                         },
                         new SubCriteria
                         {

@@ -12,5 +12,7 @@ namespace chuyendoiso.Models
         public int ParentCriteriaId { get; set; } // Id tiêu chí cha
         public ParentCriteria ParentCriteria { get; set; } // Tiêu chí cha
         public string? EvidenceInfo { get; set; } // Thông tin minh chứng
-    }
+        public DateTime? EvaluatedAt { get; set; } // Thời gian đánh giá
+        public string? UnitEvaluate { get; set; } // Đơn vị đánh giá
+}
 }
