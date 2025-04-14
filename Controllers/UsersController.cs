@@ -141,8 +141,10 @@ namespace chuyendoiso.Controllers
                 {
                     return BadRequest(new { message = "Mật khẩu cũ không chính xác!" });
                 }
-            }
+
                 existingUser.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            }
+                
 
             try
             {
