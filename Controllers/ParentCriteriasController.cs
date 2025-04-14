@@ -79,6 +79,11 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Tên tiêu chí, điểm tối đa và nhóm tiêu chí là bắt buộc!" });
             }
 
+            if (await _context.ParentCriteria.AnyAsync(p => p.Name == dto.Name))
+            {
+                return BadRequest(new { message = "Tiêu chí đã tồn tại!" });
+            }
+
             var group = await _context.TargetGroup.FirstOrDefaultAsync(g => g.Name == dto.TargetGroupName);
             if (group == null)
                 return BadRequest(new { message = "Không tìm thấy nhóm chỉ tiêu!" });
@@ -118,8 +123,14 @@ namespace chuyendoiso.Controllers
             if (existing == null)
                 return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
 
-            if (!string.IsNullOrWhiteSpace(dto.Name))
+            if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != existing.Name)
+            {
+                bool isNameExists = await _context.ParentCriteria.AnyAsync(p => p.Name == dto.Name);
+                if (isNameExists)
+                    return BadRequest(new { message = "Tên tiêu chí đã tồn tại!" });
+
                 existing.Name = dto.Name;
+            }
 
             if (dto.MaxScore.HasValue)
                 existing.MaxScore = dto.MaxScore.Value;
@@ -137,7 +148,7 @@ namespace chuyendoiso.Controllers
                     return BadRequest(new { message = "Tên nhóm không tồn tại!" });
 
                 existing.TargetGroupId = group.Id;
-            }   
+            }
 
             await _context.SaveChangesAsync();
 

@@ -87,6 +87,11 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Tên nhóm không được để trống!" });
             }
 
+            if (await _context.TargetGroup.AnyAsync(t => t.Name == dto.Name))
+            {
+                return BadRequest(new { message = "Tên nhóm đã tồn tại!" });
+            }
+
             var targetGroup = new TargetGroup
             {
                 Name = dto.Name
@@ -116,8 +121,13 @@ namespace chuyendoiso.Controllers
                 return NotFound(new { message = "Không tìm thấy nhóm!" });
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Name))
+            if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != existingTargetGroup.Name)
             {
+                if (await _context.TargetGroup.AnyAsync(t => t.Name == dto.Name))
+                {
+                    return BadRequest(new { message = "Tên nhóm đã tồn tại!" });
+                }
+
                 existingTargetGroup.Name = dto.Name;
             }
 

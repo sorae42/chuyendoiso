@@ -84,6 +84,11 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Tên tiêu chí, điểm tối đa và nhóm tiêu chí là bắt buộc!" });
             }
 
+            if (await _context.SubCriteria.AnyAsync(t => t.Name == dto.Name))
+            {
+                return BadRequest(new { message = "Tên tiêu chí đã tồn tại!" });
+            }
+
             var parent = await _context.ParentCriteria.FirstOrDefaultAsync(g => g.Name == dto.ParentCriteriaName);
             var unit = User.FindFirst("Unit")?.Value ?? "Không rõ đơn vị";
 
@@ -138,8 +143,14 @@ namespace chuyendoiso.Controllers
             if (exsiting == null)
                 return NotFound(new { message = "Không tìm thấy tiêu chí con!" });
 
-            if (!string.IsNullOrWhiteSpace(dto.Name))
+            if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != exsiting.Name)
+            {
+                bool isNameExists = await _context.SubCriteria.AnyAsync(p => p.Name == dto.Name);
+                if (isNameExists)
+                    return BadRequest(new { message = "Tên tiêu chí đã tồn tại!" });
+                
                 exsiting.Name = dto.Name;
+            }
 
             if (dto.MaxScore.HasValue)
                 exsiting.MaxScore = dto.MaxScore.Value;
