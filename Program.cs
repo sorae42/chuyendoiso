@@ -6,6 +6,7 @@ using System.Text;
 using chuyendoiso.Interface;
 using chuyendoiso.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<chuyendoisoContext>(options =>
@@ -30,7 +31,8 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            RoleClaimType = ClaimTypes.Role
         };
 
         options.Events = new JwtBearerEvents
@@ -84,8 +86,7 @@ using (var scope = app.Services.CreateScope())
             Password = hashedPassword, 
             Email = "nhoanghai2003@gmail.com", 
             Phone = "123456789",
-            Role = "admin",
-            Unit = "LIHANET",
+            Role = "admin"
         });
 
         context.SaveChanges();

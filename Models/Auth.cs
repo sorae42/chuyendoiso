@@ -13,7 +13,9 @@ namespace chuyendoiso.Models
         public string Email { get; set; }
         public string Phone { get; set; }
         public string Role { get; set; }
-        public string Unit { get; set; }
+
+        public int? UnitId { get; set; }
+        public Unit? Unit { get; set; }
 
         // Token reset password
         public string? ResetToken { get; set; }

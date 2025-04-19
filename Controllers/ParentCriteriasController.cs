@@ -124,7 +124,7 @@ namespace chuyendoiso.Controllers
                 return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
 
             if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != existing.Name)
-            {
+            { 
                 bool isNameExists = await _context.ParentCriteria.AnyAsync(p => p.Name == dto.Name);
                 if (isNameExists)
                     return BadRequest(new { message = "Tên tiêu chí đã tồn tại!" });

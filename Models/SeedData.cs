@@ -1,4 +1,5 @@
 ﻿using chuyendoiso.Data;
+using DocumentFormat.OpenXml.Drawing.Charts;
 using Microsoft.EntityFrameworkCore;
 
 namespace chuyendoiso.Models
@@ -17,6 +18,18 @@ namespace chuyendoiso.Models
             {
                 Console.WriteLine("SeedData is running");
 
+                // Seed Units
+                if (!context.Unit.Any())
+                {
+                    context.Unit.AddRange(
+                        new Unit { Name = "Tỉnh Khánh Hòa", Type = "Tỉnh", Code = "TKH" },
+                        new Unit { Name = "TP Nha Trang", Type = "Thành phố", Code = "NT" },
+                        new Unit { Name = "Huyện Diên Khánh", Type = "Huyện", Code = "DK" }
+                    );
+                    context.SaveChanges();
+                    Console.WriteLine("Seeded Unit.");
+                }
+
                 if (!context.Auth.Any())
                 {
                     context.Auth.AddRange(
@@ -28,7 +41,7 @@ namespace chuyendoiso.Models
                             Email = "sogtvt@khanhhoa.gov.vn",
                             Phone = "02583889999",
                             Role = "user",
-                            Unit = "Tỉnh Khánh Hòa"
+                            UnitId = 1
                         },
                         new Auth
                         {
@@ -38,7 +51,7 @@ namespace chuyendoiso.Models
                             Email = "cds@dienkhanh.gov.vn",
                             Phone = "02583778899",
                             Role = "user",
-                            Unit = "Huyện Diên Khánh"
+                            UnitId = 3
                         },
                         new Auth
                         {
@@ -48,7 +61,7 @@ namespace chuyendoiso.Models
                             Email = "cds@nhatrang.gov.vn",
                             Phone = "02583556677",
                             Role = "user",
-                            Unit = "TP Nha Trang"
+                            UnitId = 2
                         }
                     );
                     context.SaveChanges();
@@ -56,9 +69,10 @@ namespace chuyendoiso.Models
                 }
                 else
                 {
-                    Console.WriteLine("Auth data already exists. Skipping...");
+                    Console.WriteLine("Auth data already exists. Skip");
                 }
 
+                // Seed TargetGroup
                 if (!context.TargetGroup.Any())
                 {
                     context.TargetGroup.AddRange(
@@ -70,33 +84,61 @@ namespace chuyendoiso.Models
                 }
                 else
                 {
-                    Console.WriteLine("TargetGroup data already exists. Skipping...");
+                    Console.WriteLine("TargetGroup data already exists. Skip");
                 }
 
-                if (!context.ParentCriteria.Any())
+                // Seed EvaluationPeriod
+                if (!context.EvaluationPeriod.Any())
                 {
-                    context.ParentCriteria.AddRange(
-                        new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 1 },
-                        new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroupId = 1 },
-                        new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroupId = 1 },
-                        new ParentCriteria { Name = "CHỈ TIÊU CHUNG", TargetGroupId = 2 },
-                        new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 2 },
-                        new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroupId = 2 },
-                        new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroupId = 2 }
+                    context.EvaluationPeriod.Add(new EvaluationPeriod
+                    {
+                        Name = "Kỳ đánh giá 2024",
+                        StartDate = UtcDate(2024, 1, 1),
+                        EndDate = UtcDate(2024, 12, 31)
+                    });
+                    context.SaveChanges();
+                    Console.WriteLine("Seeded EvaluationPeriod.");
+                }
+
+                // Seed EvaluationUnit
+                if (!context.EvaluationUnit.Any())
+                {
+                    context.EvaluationUnit.AddRange(
+                        new EvaluationUnit { EvaluationPeriodId = 1, UnitId = 1 },
+                        new EvaluationUnit { EvaluationPeriodId = 1, UnitId = 2 },
+                        new EvaluationUnit { EvaluationPeriodId = 1, UnitId = 3 }
                     );
                     context.SaveChanges();
-                    Console.WriteLine("Seeded ParentCriteria.");
+                    Console.WriteLine("Seeded EvaluationUnit.");
+                }
+
+                // Seed ParentCriteria
+                if (!context.ParentCriteria.Any())
+                {
+                    
+                    context.ParentCriteria.AddRange(
+                        new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 1, EvaluationPeriodId = 1},
+                        new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroupId = 1, EvaluationPeriodId = 1 },
+                        new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroupId = 1, EvaluationPeriodId = 1 },
+                        new ParentCriteria { Name = "CHỈ TIÊU CHUNG", TargetGroupId = 2, EvaluationPeriodId = 1 },
+                        new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 2, EvaluationPeriodId = 1 },
+                        new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroupId = 2, EvaluationPeriodId = 1 },
+                        new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroupId = 2, EvaluationPeriodId = 1 }
+                    );
+                    context.SaveChanges();
+                    Console.WriteLine("Seeded Parent Criteria.");
                 }
                 else
                 {
-                    Console.WriteLine("ParentCriteria data already exists. Skipping...");
+                    Console.WriteLine("ParentCriteria data already exists. Skip");
                 }
 
+                // Seed SubCriteria
                 if (!context.SubCriteria.Any())
                 {
                     context.SubCriteria.AddRange(
-                        new SubCriteria 
-                        {   
+                        new SubCriteria
+                        {
                             Name = "Tỷ lệ thủ tục hành chính đủ điều kiện theo quy định của pháp luật được cung cấp dưới hình thức dịch vụ công trực tuyến toàn trình.",
                             MaxScore = 30,
                             Description = "Cổng dịch vụ công cấp tỉnh.",
@@ -105,8 +147,8 @@ namespace chuyendoiso.Models
                             UnitEvaluate = "Tỉnh Khánh Hòa",
                             EvaluatedAt = UtcDate(2022, 3, 10)
                         },
-                        new SubCriteria 
-                        {   
+                        new SubCriteria
+                        {
                             Name = "Tỷ lệ hồ sơ thủ tục hành chính được thực hiện trực tuyến toàn trình.",
                             MaxScore = 20,
                             Description = "CHệ thống giám sát, đo lường mức độ cung cấp và sử dụng dịch vụ Chính phủ số.",
@@ -115,8 +157,8 @@ namespace chuyendoiso.Models
                             UnitEvaluate = "Tỉnh Khánh Hòa",
                             EvaluatedAt = UtcDate(2022, 7, 5)
                         },
-                        new SubCriteria 
-                        { 
+                        new SubCriteria
+                        {
                             Name = "Tỷ lệ xử lý văn bản, hồ sơ công việc (trừ hồ sơ mật) trên môi trường mạng.",
                             MaxScore = 70,
                             Description = "Tỷ lệ phần trăm của số văn bản được xử lý trên phần mềm quản lý văn bản và điều hành trên tổng số văn bản đến và đi của cơ quan cấp xã.",
@@ -215,14 +257,14 @@ namespace chuyendoiso.Models
                             ParentCriteriaId = 7,
                             EvidenceInfo = "Quyết định số 942/QĐ-TTg ngày 15/6/2021 của Thủ tướng Chính phủ."
                         }
-                        
+
                     );
                     context.SaveChanges();
                     Console.WriteLine("Seeded SubCriteria.");
                 }
                 else
                 {
-                    Console.WriteLine("SubCriteria data already exists. Skipping...");
+                    Console.WriteLine("SubCriteria data already exists. Skip");
                 }
 
                 Console.WriteLine("SeedData completed.");

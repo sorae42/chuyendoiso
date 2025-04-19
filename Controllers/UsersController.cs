@@ -144,7 +144,6 @@ namespace chuyendoiso.Controllers
 
                 existingUser.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
             }
-                
 
             try
             {

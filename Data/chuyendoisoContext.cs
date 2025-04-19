@@ -19,5 +19,8 @@ namespace chuyendoiso.Data
         public DbSet<ParentCriteria> ParentCriteria { get; set; } = default!;
         public DbSet<SubCriteria> SubCriteria { get; set; } = default!;
         public DbSet<ActionLog> ActionLogs { get; set; } = default!;
+        public DbSet<Unit> Unit { get; set; }
+        public DbSet<EvaluationPeriod> EvaluationPeriod { get; set; } = default!;
+        public DbSet<EvaluationUnit> EvaluationUnit { get; set; } = default!;
     }
 }
