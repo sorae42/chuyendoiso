@@ -22,5 +22,8 @@ namespace chuyendoiso.Data
         public DbSet<Unit> Unit { get; set; }
         public DbSet<EvaluationPeriod> EvaluationPeriod { get; set; } = default!;
         public DbSet<EvaluationUnit> EvaluationUnit { get; set; } = default!;
+        public DbSet<ReviewCouncil> ReviewCouncil { get; set; } = default!;
+        public DbSet<Reviewer> Reviewer { get; set; } = default!;
+        public DbSet<ReviewAssignment> ReviewAssignment { get; set; } = default!;
     }
 }

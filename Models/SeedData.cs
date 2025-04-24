@@ -267,6 +267,56 @@ namespace chuyendoiso.Models
                     Console.WriteLine("SubCriteria data already exists. Skip");
                 }
 
+                // Seed ReviewCouncil
+                if (!context.ReviewCouncil.Any())
+                {
+                    context.ReviewCouncil.Add(new ReviewCouncil
+                    {
+                        Name = "Hội đồng đánh giá chuyển đổi số tỉnh Khánh Hòa",
+                        CreatedAt = UtcDate(2024, 1, 1),
+                        CreatedById = 4
+                    });
+                    context.SaveChanges();
+                    Console.WriteLine("Seeded ReviewCouncil.");
+                }
+                else
+                {
+                    Console.WriteLine("ReviewCouncil data already exists. Skip");
+                }
+
+                // Seed Reviewer
+                if (!context.Reviewer.Any())
+                {
+                    context.Reviewer.Add(new Reviewer
+                    {
+                        ReviewCouncilId = 1,
+                        AuthId = 3
+                    });
+                    context.SaveChanges();
+                    Console.WriteLine("Seeded Reviewer.");
+                }
+                else
+                {
+                    Console.WriteLine("Reviewer data already exists. Skip");
+                }
+
+                // Seed RevewAssignment
+                if (!context.ReviewAssignment.Any())
+                {
+                    context.ReviewAssignment.Add(new ReviewAssignment
+                    {
+                        ReviewerId = 1,
+                        UnitId = 2,
+                        SubCriteriaId = 5
+                    });
+                    context.SaveChanges();
+                    Console.WriteLine("Seeded ReviewAssignment.");
+                }
+                else
+                {
+                    Console.WriteLine("ReviewAssignment data already exists. Skip");
+                }
+
                 Console.WriteLine("SeedData completed.");
             }
         }
