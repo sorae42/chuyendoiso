@@ -94,7 +94,8 @@ namespace chuyendoiso.Controllers
                 Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 FullName = dto.FullName,
                 Email = dto.Email,
-                Phone = dto.Phone
+                Phone = dto.Phone,
+                Role = dto.Role
             };
             _context.Auth.Add(user);
             await _context.SaveChangesAsync();
@@ -106,7 +107,8 @@ namespace chuyendoiso.Controllers
                 user.Username,
                 user.FullName,
                 user.Email,
-                user.Phone
+                user.Phone,
+                user.Role
             });
         }
 
