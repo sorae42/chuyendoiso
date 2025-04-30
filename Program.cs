@@ -72,8 +72,6 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
-    SeedData.Initialize(services);
-
     var context = services.GetRequiredService<chuyendoisoContext>();
 
     if (!context.Auth.Any(u => u.Username == "admin"))
@@ -93,6 +91,8 @@ using (var scope = app.Services.CreateScope())
 
         Console.WriteLine("Default admin account created.");
     }
+
+    SeedData.Initialize(services);
 }
 
 // Configure the HTTP request pipeline.

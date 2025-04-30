@@ -30,47 +30,53 @@ namespace chuyendoiso.Models
                     Console.WriteLine("Seeded Unit.");
                 }
 
-                if (!context.Auth.Any())
+                var authUsernamesToSeed = new List<(string Username, Auth Auth)>
                 {
-                    context.Auth.AddRange(
-                        new Auth
-                        {
-                            Username = "sogtvt_khanhhoa",
-                            Password = BCrypt.Net.BCrypt.HashPassword("sogtvt123"),
-                            FullName = "Sở Giao thông Vận tải Khánh Hòa",
-                            Email = "sogtvt@khanhhoa.gov.vn",
-                            Phone = "02583889999",
-                            Role = "user",
-                            UnitId = 1
-                        },
-                        new Auth
-                        {
-                            Username = "huyen_dienkhanh",
-                            Password = BCrypt.Net.BCrypt.HashPassword("dienkhanh123"),
-                            FullName = "Phòng CĐS Huyện Diên Khánh",
-                            Email = "cds@dienkhanh.gov.vn",
-                            Phone = "02583778899",
-                            Role = "user",
-                            UnitId = 3
-                        },
-                        new Auth
-                        {
-                            Username = "tp_nhatrang",
-                            Password = BCrypt.Net.BCrypt.HashPassword("nhatrang123"),
-                            FullName = "Phòng Chuyển đổi số - TP Nha Trang",
-                            Email = "cds@nhatrang.gov.vn",
-                            Phone = "02583556677",
-                            Role = "user",
-                            UnitId = 2
-                        }
-                    );
-                    context.SaveChanges();
-                    Console.WriteLine("Seeded Auth users.");
-                }
-                else
+                    ("sogtvt_khanhhoa", new Auth
+                    {
+                        Username = "sogtvt_khanhhoa",
+                        Password = BCrypt.Net.BCrypt.HashPassword("sogtvt123"),
+                        FullName = "Sở Giao thông Vận tải Khánh Hòa",
+                        Email = "sogtvt@khanhhoa.gov.vn",
+                        Phone = "02583889999",
+                        Role = "user",
+                        UnitId = 1
+                    }),
+                    ("huyen_dienkhanh", new Auth
+                    {
+                        Username = "huyen_dienkhanh",
+                        Password = BCrypt.Net.BCrypt.HashPassword("dienkhanh123"),
+                        FullName = "Phòng CĐS Huyện Diên Khánh",
+                        Email = "cds@dienkhanh.gov.vn",
+                        Phone = "02583778899",
+                        Role = "user",
+                        UnitId = 3
+                    }),
+                    ("tp_nhatrang", new Auth
+                    {
+                        Username = "tp_nhatrang",
+                        Password = BCrypt.Net.BCrypt.HashPassword("nhatrang123"),
+                        FullName = "Phòng Chuyển đổi số - TP Nha Trang",
+                        Email = "cds@nhatrang.gov.vn",
+                        Phone = "02583556677",
+                        Role = "user",
+                        UnitId = 2
+                    })
+                };
+
+                foreach (var (username, auth) in authUsernamesToSeed)
                 {
-                    Console.WriteLine("Auth data already exists. Skip");
+                    if (!context.Auth.Any(u => u.Username == username))
+                    {
+                        context.Auth.Add(auth);
+                        Console.WriteLine($"Seeded Auth user: {username}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Auth user {username} already exists. Skip.");
+                    }
                 }
+                context.SaveChanges();
 
                 // Seed TargetGroup
                 if (!context.TargetGroup.Any())
@@ -270,34 +276,50 @@ namespace chuyendoiso.Models
                 // Seed ReviewCouncil
                 if (!context.ReviewCouncil.Any())
                 {
-                    context.ReviewCouncil.Add(new ReviewCouncil
+                    var admin = context.Auth.FirstOrDefault(u => u.Username == "admin");
+                    if (admin != null)
                     {
-                        Name = "Hội đồng đánh giá chuyển đổi số tỉnh Khánh Hòa",
-                        CreatedAt = UtcDate(2024, 1, 1),
-                        CreatedById = 4
-                    });
-                    context.SaveChanges();
-                    Console.WriteLine("Seeded ReviewCouncil.");
+                        context.ReviewCouncil.Add(new ReviewCouncil
+                        {
+                            Name = "Hội đồng đánh giá chuyển đổi số tỉnh Khánh Hòa",
+                            CreatedAt = DateTime.SpecifyKind(new DateTime(2024, 1, 1), DateTimeKind.Utc),
+                            CreatedById = admin.Id
+                        });
+                        context.SaveChanges();
+                        Console.WriteLine("Seeded ReviewCouncil.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Admin not found. Cannot seed ReviewCouncil.");
+                    }
                 }
                 else
                 {
-                    Console.WriteLine("ReviewCouncil data already exists. Skip");
+                    Console.WriteLine("ReviewCouncil data already exists or admin not found. Skip");
                 }
 
                 // Seed Reviewer
                 if (!context.Reviewer.Any())
                 {
-                    context.Reviewer.Add(new Reviewer
+                    var admin = context.Auth.FirstOrDefault(u => u.Username == "admin");
+                    if (admin != null)
                     {
-                        ReviewCouncilId = 1,
-                        AuthId = 3
-                    });
-                    context.SaveChanges();
-                    Console.WriteLine("Seeded Reviewer.");
+                        context.Reviewer.Add(new Reviewer
+                        {
+                            ReviewCouncilId = 1,
+                            AuthId = admin.Id
+                        });
+                        context.SaveChanges();
+                        Console.WriteLine("Seeded Reviewer.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Admin not found. Cannot seed Reviewer.");
+                    }
                 }
                 else
                 {
-                    Console.WriteLine("Reviewer data already exists. Skip");
+                    Console.WriteLine("Reviewer data already exists or admin not found. Skip");
                 }
 
                 // Seed RevewAssignment
