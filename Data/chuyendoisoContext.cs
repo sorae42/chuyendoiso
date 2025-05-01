@@ -25,5 +25,7 @@ namespace chuyendoiso.Data
         public DbSet<ReviewCouncil> ReviewCouncil { get; set; } = default!;
         public DbSet<Reviewer> Reviewer { get; set; } = default!;
         public DbSet<ReviewAssignment> ReviewAssignment { get; set; } = default!;
+        public DbSet<ReviewResult> ReviewResult { get; set; } = default!;
+        public DbSet<FinalReviewResult> FinalReviewResult { get; set; } = default!;
     }
 }

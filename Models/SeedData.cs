@@ -1,4 +1,5 @@
 ﻿using chuyendoiso.Data;
+using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Drawing.Charts;
 using Microsoft.EntityFrameworkCore;
 
@@ -279,64 +280,93 @@ namespace chuyendoiso.Models
                     var admin = context.Auth.FirstOrDefault(u => u.Username == "admin");
                     if (admin != null)
                     {
-                        context.ReviewCouncil.Add(new ReviewCouncil
+                        var council = new ReviewCouncil
                         {
                             Name = "Hội đồng đánh giá chuyển đổi số tỉnh Khánh Hòa",
                             CreatedAt = DateTime.SpecifyKind(new DateTime(2024, 1, 1), DateTimeKind.Utc),
                             CreatedById = admin.Id
-                        });
+                        };
+
+                        context.ReviewCouncil.Add(council);
                         context.SaveChanges();
-                        Console.WriteLine("Seeded ReviewCouncil.");
+
+                        var chairReviewer = new Reviewer
+                        {
+                            ReviewCouncilId = council.Id,
+                            AuthId = admin.Id,
+                            IsChair = true
+                        };
+
+                        context.Reviewer.Add(chairReviewer);
+                        context.SaveChanges();
+
+                        Console.WriteLine("Seeded ReviewCouncil and Chair Reviewer.");
                     }
                     else
                     {
-                        Console.WriteLine("Admin not found. Cannot seed ReviewCouncil.");
+                        Console.WriteLine("Admin not found. Cannot seed ReviewCouncil or Chair Reviewer.");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("ReviewCouncil data already exists or admin not found. Skip");
+                    Console.WriteLine("ReviewCouncil data already exists. Skip");
                 }
 
                 // Seed Reviewer
-                if (!context.Reviewer.Any())
+                if (!context.Reviewer.Any(r => !r.IsChair))
                 {
-                    var admin = context.Auth.FirstOrDefault(u => u.Username == "admin");
-                    if (admin != null)
+                    var user = context.Auth.FirstOrDefault(u => u.Username == "admin");
+                    var council = context.ReviewCouncil.FirstOrDefault();
+
+                    if (user != null && council != null)
                     {
                         context.Reviewer.Add(new Reviewer
                         {
-                            ReviewCouncilId = 1,
-                            AuthId = admin.Id
+                            ReviewCouncilId = council.Id,
+                            AuthId = user.Id,
+                            IsChair = true
                         });
                         context.SaveChanges();
-                        Console.WriteLine("Seeded Reviewer.");
+
+                        Console.WriteLine("Seeded reviewer member.");
                     }
                     else
                     {
-                        Console.WriteLine("Admin not found. Cannot seed Reviewer.");
+                        Console.WriteLine("User or council not found. Cannot seed member reviewer.");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Reviewer data already exists or admin not found. Skip");
+                    Console.WriteLine("Reviewer members already exist. Skip");
                 }
 
                 // Seed RevewAssignment
                 if (!context.ReviewAssignment.Any())
                 {
-                    context.ReviewAssignment.Add(new ReviewAssignment
+                    var reviewer = context.Reviewer.FirstOrDefault(r => !r.IsChair);
+                    var unit = context.Unit.FirstOrDefault(u => u.Id == 2);
+                    var sub = context.SubCriteria.FirstOrDefault(s => s.Id == 5);
+
+                    if (reviewer != null && unit != null && sub != null)
                     {
-                        ReviewerId = 1,
-                        UnitId = 2,
-                        SubCriteriaId = 5
-                    });
-                    context.SaveChanges();
-                    Console.WriteLine("Seeded ReviewAssignment.");
+                        context.ReviewAssignment.Add(new ReviewAssignment
+                        {
+                            ReviewerId = reviewer.Id,
+                            UnitId = unit.Id,
+                            SubCriteriaId = sub.Id
+                        });
+
+                        context.SaveChanges();
+                        Console.WriteLine("Seeded ReviewAssignment.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Cannot seed ReviewAssignment: reviewer/unit/subcriteria missing.");
+                    }
                 }
                 else
                 {
-                    Console.WriteLine("ReviewAssignment data already exists. Skip");
+                    Console.WriteLine("ReviewAssignment already exists. Skip");
                 }
 
                 Console.WriteLine("SeedData completed.");

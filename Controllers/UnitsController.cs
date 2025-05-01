@@ -6,6 +6,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace chuyendoiso.Controllers
 {
@@ -28,7 +29,7 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> GetAll()
         {
             var units = await _context.Unit
-                .Include(u => u.Users) // Đảm bảo Include user
+                .Include(u => u.Users)
                 .Select(u => new
                 {
                     u.Id,
@@ -54,7 +55,24 @@ namespace chuyendoiso.Controllers
         [Authorize]
         public async Task<IActionResult> GetUnit(int id)
         {
-            var unit = await _context.Unit.FindAsync(id);
+            var unit = await _context.Unit
+                .Include(u => u.Users)
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Name,
+                    u.Code,
+                    u.Type,
+                    u.Address,
+                    u.Description,
+                    Users = u.Users.Select(user => new
+                    {
+                        user.Id,
+                        user.FullName,
+                        user.Username
+                    }).ToList()
+                }).FirstOrDefaultAsync();
+
             if (unit == null)
             {
                 return NotFound(new { message = "Đơn vị không tồn tại!" });
@@ -88,6 +106,9 @@ namespace chuyendoiso.Controllers
             };
             _context.Unit.Add(unit);
             await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Create", $"Tạo đơn vị: {unit.Name} (ID = {unit.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return CreatedAtAction(nameof(Index), new { id = unit.Id }, unit);
         }
 
@@ -131,7 +152,9 @@ namespace chuyendoiso.Controllers
             }
 
             await _context.SaveChangesAsync();
-            
+
+            await _logService.WriteLogAsync("Update", $"Cập nhật đơn vị: {existingUnit.Name} (ID = {existingUnit.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return Ok(new
             {
                 message = "Cập nhật đơn vị thành công!",
@@ -159,6 +182,9 @@ namespace chuyendoiso.Controllers
             }
             _context.Unit.Remove(unit);
             await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Delete", $"Xóa đơn vị: {unit.Name} (ID = {unit.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return Ok(new { message = "Xóa đơn vị thành công!" });
         }
     }

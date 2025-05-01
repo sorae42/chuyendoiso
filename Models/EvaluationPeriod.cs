@@ -13,6 +13,11 @@ namespace chuyendoiso.Models
         [Required]
         public DateTime EndDate { get; set; }
 
+        public bool IsLocked { get; set; } = false;
+        public DateTime? LockedUntil { get; set; }
+        public string? LockReason { get; set; }
+        public string? LockAttachment { get; set; }
+
         public List<EvaluationUnit> EvaluationUnits { get; set; }
 
         public List<ParentCriteria> ParentCriterias { get; set; }

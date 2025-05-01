@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using chuyendoiso.Data;
@@ -11,9 +12,11 @@ using chuyendoiso.Data;
 namespace chuyendoiso.Migrations
 {
     [DbContext(typeof(chuyendoisoContext))]
-    partial class chuyendoisoContextModelSnapshot : ModelSnapshot
+    [Migration("20250426020246_LockEvaluationPeriod")]
+    partial class LockEvaluationPeriod
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,12 +118,6 @@ namespace chuyendoiso.Migrations
                     b.Property<bool>("IsLocked")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("LockAttachment")
-                        .HasColumnType("text");
-
-                    b.Property<string>("LockReason")
-                        .HasColumnType("text");
-
                     b.Property<DateTime?>("LockedUntil")
                         .HasColumnType("timestamp with time zone");
 
@@ -157,33 +154,6 @@ namespace chuyendoiso.Migrations
                     b.HasIndex("UnitId");
 
                     b.ToTable("EvaluationUnit");
-                });
-
-            modelBuilder.Entity("chuyendoiso.Models.FinalReviewResult", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FinalAttachmentPath")
-                        .HasColumnType("text");
-
-                    b.Property<string>("FinalComment")
-                        .HasColumnType("text");
-
-                    b.Property<float?>("FinalScore")
-                        .HasColumnType("real");
-
-                    b.Property<int>("ReviewAssignmentId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReviewAssignmentId");
-
-                    b.ToTable("FinalReviewResult");
                 });
 
             modelBuilder.Entity("chuyendoiso.Models.ParentCriteria", b =>
@@ -278,33 +248,6 @@ namespace chuyendoiso.Migrations
                     b.ToTable("ReviewCouncil");
                 });
 
-            modelBuilder.Entity("chuyendoiso.Models.ReviewResult", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AttachmentPath")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Comment")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ReviewAssignmentId")
-                        .HasColumnType("integer");
-
-                    b.Property<float?>("Score")
-                        .HasColumnType("real");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReviewAssignmentId");
-
-                    b.ToTable("ReviewResult");
-                });
-
             modelBuilder.Entity("chuyendoiso.Models.Reviewer", b =>
                 {
                     b.Property<int>("Id")
@@ -315,9 +258,6 @@ namespace chuyendoiso.Migrations
 
                     b.Property<int>("AuthId")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("IsChair")
-                        .HasColumnType("boolean");
 
                     b.Property<int>("ReviewCouncilId")
                         .HasColumnType("integer");
@@ -442,17 +382,6 @@ namespace chuyendoiso.Migrations
                     b.Navigation("Unit");
                 });
 
-            modelBuilder.Entity("chuyendoiso.Models.FinalReviewResult", b =>
-                {
-                    b.HasOne("chuyendoiso.Models.ReviewAssignment", "ReviewAssignment")
-                        .WithMany()
-                        .HasForeignKey("ReviewAssignmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ReviewAssignment");
-                });
-
             modelBuilder.Entity("chuyendoiso.Models.ParentCriteria", b =>
                 {
                     b.HasOne("chuyendoiso.Models.EvaluationPeriod", "EvaluationPeriod")
@@ -506,17 +435,6 @@ namespace chuyendoiso.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedBy");
-                });
-
-            modelBuilder.Entity("chuyendoiso.Models.ReviewResult", b =>
-                {
-                    b.HasOne("chuyendoiso.Models.ReviewAssignment", "ReviewAssignment")
-                        .WithMany()
-                        .HasForeignKey("ReviewAssignmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ReviewAssignment");
                 });
 
             modelBuilder.Entity("chuyendoiso.Models.Reviewer", b =>

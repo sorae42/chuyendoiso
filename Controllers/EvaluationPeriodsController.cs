@@ -2,6 +2,7 @@
 using chuyendoiso.DTOs;
 using chuyendoiso.Models;
 using chuyendoiso.Services;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -29,8 +30,16 @@ namespace chuyendoiso.Controllers
         {
             var periods = await _context.EvaluationPeriod
                 .Include(p => p.EvaluationUnits)
-                    .ThenInclude(eu => eu.Unit)
+                .ThenInclude(eu => eu.Unit)
                 .OrderByDescending(p => p.StartDate)
+                .ToListAsync();
+
+            foreach (var period in periods)
+            {
+                await CheckAndAutoUnlock(period);
+            }
+
+            var result = periods
                 .Select(p => new
                 {
                     p.Id,
@@ -44,12 +53,10 @@ namespace chuyendoiso.Controllers
                         eu.Unit.Code,
                         eu.Unit.Type
                     }).ToList()
-                })
-                .ToListAsync();
+                });
 
             return Ok(periods);
         }
-
 
         // POST: api/evaluationperiods/create
         // Params: Name, StartDate, EndDate, UnitId
@@ -86,6 +93,8 @@ namespace chuyendoiso.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            await _logService.WriteLogAsync("Create", $"Tạo kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return Ok(new
             {
                 message = "Tạo kỳ đánh giá thành công!",
@@ -111,6 +120,9 @@ namespace chuyendoiso.Controllers
             {
                 return NotFound(new { message = "Không tìm thấy kỳ đánh giá!" });
             }
+
+            await CheckAndAutoUnlock(period);
+
             return Ok(period);
         }
 
@@ -155,6 +167,8 @@ namespace chuyendoiso.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            await _logService.WriteLogAsync("Update", $"Cập nhật kỳ đánh giá: {existing.Name} (ID = {existing.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
             return Ok(new { message = "Cập nhật kỳ đánh giá thành công!" });
         }
 
@@ -182,10 +196,68 @@ namespace chuyendoiso.Controllers
             _context.EvaluationPeriod.Remove(period);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete", $"Xóa kỳ đánh giá: {period.Name} (ID = {period.Id})",
-        User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync("Delete", $"Xóa kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
             return Ok(new { message = "Xóa kỳ đánh giá thành công!" });
+        }
+
+        // POST: api/evaluationperiods/lock
+        // Params: id, reason, until
+        [HttpPost("lockperiod")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> LockPeriod(int id, [FromBody] LockPeriodDto dto)
+        {
+            var period = await _context.EvaluationPeriod.FindAsync(id);
+            if (period == null)
+            {
+                return NotFound(new { message = "Không tìm thấy kỳ đánh giá!" });
+            }
+
+            // Validate unlock date
+            if (dto.UnlockDate.HasValue)
+            {
+                if (dto.UnlockDate < DateTime.UtcNow || dto.UnlockDate > period.EndDate)
+                    return BadRequest(new { message = "Ngày mở khóa không hợp lệ!" });
+            }
+
+            period.IsLocked = true;
+            period.LockReason = dto.Reason;
+            period.LockedUntil = dto.UnlockDate;
+
+            // Handle file upload
+            if (dto.Attachment != null && dto.Attachment.Length > 0)
+            {
+                var fileName = $"lock_{id}_{DateTime.UtcNow.Ticks}.pdf";
+                var filePath = Path.Combine("Uploads", "LockReasons", fileName);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? string.Empty);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Attachment.CopyToAsync(stream);
+                }
+                period.LockAttachment = filePath;
+            }
+
+            await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Lock", $"Khóa kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new { message = "Khóa kỳ đánh giá thành công!" });
+        }
+
+        private async Task CheckAndAutoUnlock(EvaluationPeriod period)
+        {
+            if (period.IsLocked && period.LockedUntil.HasValue && DateTime.UtcNow > period.LockedUntil.Value)
+            {
+                period.IsLocked = false;
+                period.LockReason = null;
+                period.LockedUntil = null;
+                period.LockAttachment = null;
+
+                _context.EvaluationPeriod.Update(period);
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }
