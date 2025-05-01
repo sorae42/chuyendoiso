@@ -26,12 +26,28 @@ namespace chuyendoiso.Controllers
         // GET: api/evaluationperiods
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] int? year = null)
         {
-            var periods = await _context.EvaluationPeriod
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
+            var query = _context.EvaluationPeriod
                 .Include(p => p.EvaluationUnits)
                 .ThenInclude(eu => eu.Unit)
+                .AsQueryable();
+
+            // Filter by year if provided
+            if (year.HasValue)
+            {
+                query = query.Where(p => p.StartDate.Year == year.Value);
+            }
+
+            // Pagination
+            var totalCount = await query.CountAsync();
+            var periods = await query
                 .OrderByDescending(p => p.StartDate)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             foreach (var period in periods)
@@ -39,8 +55,9 @@ namespace chuyendoiso.Controllers
                 await CheckAndAutoUnlock(period);
             }
 
-            var result = periods
-                .Select(p => new
+            var result = new
+            {
+                Items = periods.Select(p => new
                 {
                     p.Id,
                     p.Name,
@@ -53,9 +70,14 @@ namespace chuyendoiso.Controllers
                         eu.Unit.Code,
                         eu.Unit.Type
                     }).ToList()
-                });
+                }),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
 
-            return Ok(periods);
+            return Ok(result);
         }
 
         // POST: api/evaluationperiods/create
@@ -116,6 +138,7 @@ namespace chuyendoiso.Controllers
                 .Include(p => p.EvaluationUnits)
                 .ThenInclude(eu => eu.Unit)
                 .FirstOrDefaultAsync(p => p.Id == id);
+
             if (period == null)
             {
                 return NotFound(new { message = "Không tìm thấy kỳ đánh giá!" });
@@ -123,7 +146,26 @@ namespace chuyendoiso.Controllers
 
             await CheckAndAutoUnlock(period);
 
-            return Ok(period);
+            var result = new
+            {
+                period.Id,
+                period.Name,
+                period.StartDate,
+                period.EndDate,
+                period.IsLocked,
+                period.LockedUntil,
+                period.LockReason,
+                period.LockAttachment,
+                Units = period.EvaluationUnits.Select(eu => new
+                {
+                    eu.Unit.Id,
+                    eu.Unit.Name,
+                    eu.Unit.Code,
+                    eu.Unit.Type
+                })
+            };
+
+            return Ok(result);
         }
 
         // PUT: api/evaluationperiods/1

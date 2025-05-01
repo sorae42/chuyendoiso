@@ -48,6 +48,38 @@ namespace chuyendoiso.Controllers
             return Ok(results);
         }
 
+        // GET: api/reviewresults/{id}
+        [HttpGet("{id}")]
+        [Authorize]
+        public async Task<IActionResult> GetReviewResultDetail(int id)
+        {
+            var result = await _context.ReviewResult
+                .Include(r => r.ReviewAssignment)
+                    .ThenInclude(a => a.Unit)
+                .Include(r => r.ReviewAssignment.SubCriteria)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (result == null)
+                return NotFound(new { message = "Không tìm thấy kết quả thẩm định!" });
+
+            return Ok(new
+            {
+                result.Id,
+                result.Score,
+                result.Comment,
+                result.AttachmentPath,
+                Unit = new
+                {
+                    result.ReviewAssignment.Unit.Id,
+                    result.ReviewAssignment.Unit.Name,
+                    result.ReviewAssignment.Unit.Code
+                },
+                SubCriteria = result.ReviewAssignment.SubCriteria != null
+                    ? new { result.ReviewAssignment.SubCriteria.Id, result.ReviewAssignment.SubCriteria.Name }
+                    : null
+            });
+        }
+
         // POST: api/reviewresults/submit
         // Summary: Thành viên hội đồng nộp kết quả thẩm định đơn vị
         // Params: ReviewAssignmentId, score, comment? or attachment?

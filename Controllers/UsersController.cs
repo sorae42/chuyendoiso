@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using chuyendoiso.DTOs;
 using System.Security.Claims;
 using chuyendoiso.Services;
+using X.PagedList;
 
 namespace chuyendoiso.Controllers
 {
@@ -25,19 +26,48 @@ namespace chuyendoiso.Controllers
         // GET: api/users
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
         {
-            var users = await _context.Auth.Select( u => new
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
+            var query = _context.Auth.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                u.Id,
-                u.Username,
-                u.FullName,
-                u.Email,
-                u.Phone
-            })
+                search = search.Trim().ToLower();
+                query = query.Where(u => u.Username.ToLower().Contains(search) || u.FullName.ToLower().Contains(search));
+            }
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var users = await query
+                .OrderBy(u => u.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Username,
+                    u.FullName,
+                    u.Email,
+                    u.Phone
+                })
                 .ToListAsync();
 
-            return Ok(users);
+            var result = new
+            {
+                Items = users,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                HasPreviousPage = page > 1,
+                HasNextPage = page < totalPages
+            };
+
+            return Ok(result);
         }
 
         // GET: api/users/userid

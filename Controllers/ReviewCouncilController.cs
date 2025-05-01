@@ -27,6 +27,65 @@ namespace chuyendoiso.Controllers
             _logService = log;
         }
 
+        // GET: api/reviewcouncil
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Index()
+        {
+            var councils = await _context.ReviewCouncil
+                .Include(c => c.Reviewers)
+                .ThenInclude(r => r.Auth)
+                .OrderByDescending(c => c.CreatedAt)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Description,
+                    c.CreatedAt,
+                    Chair = c.Reviewers
+                        .Where(r => r.IsChair)
+                        .Select(r => new { r.Auth.FullName, r.Auth.Username })
+                        .FirstOrDefault(),
+                    MemberCount = c.Reviewers.Count
+                })
+                .ToListAsync();
+
+            return Ok(councils);
+        }
+
+        // GET: api/reviewcouncil/{id}
+        // Params: id
+        [HttpGet("{id}")]
+        [Authorize]
+        public async Task<IActionResult> Details(int id)
+        {
+            var council = await _context.ReviewCouncil
+                .Include(c => c.Reviewers)
+                .ThenInclude(r => r.Auth)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (council == null)
+                return NotFound(new { message = "Không tìm thấy hội đồng!" });
+
+            var result = new
+            {
+                council.Id,
+                council.Name,
+                council.Description,
+                council.CreatedAt,
+                Chair = council.Reviewers
+                    .Where(r => r.IsChair)
+                    .Select(r => new { r.Auth.FullName, r.Auth.Username })
+                    .FirstOrDefault(),
+                Members = council.Reviewers
+                    .Where(r => !r.IsChair)
+                    .Select(r => new { r.Id, r.Auth.FullName, r.Auth.Username })
+                    .ToList()
+            };
+
+            return Ok(result);
+        }
+
         // POST: api/reviewcouncil/create
         // Params: Name, Description, Id creator
         // Tạo hội đồng đánh giá 
