@@ -56,6 +56,7 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> GetUnit(int id)
         {
             var unit = await _context.Unit
+                .Where(u => u.Id == id)
                 .Include(u => u.Users)
                 .Select(u => new
                 {
