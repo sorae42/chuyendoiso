@@ -216,5 +216,44 @@ namespace chuyendoiso.Controllers
 
             return Ok(new { message = "Xóa người dùng thành công!" });
         }
+
+        // PUT: api/users/update-profile
+        // Params: Fullname, Email, Phone, Password
+        [HttpPut("update-profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UserDto dto)
+        {
+            var username = User.Identity?.Name;
+            var user = await _context.Auth.FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user == null)
+                return NotFound(new { message = "Không tìm thấy người dùng!" });
+
+            if (!string.IsNullOrWhiteSpace(dto.FullName))
+                user.FullName = dto.FullName;
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+                user.Phone = dto.Phone;
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+                user.Email = dto.Email;
+
+            if (!string.IsNullOrWhiteSpace(dto.OldPassword) && !string.IsNullOrWhiteSpace(dto.Password))
+            {
+                if (!BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.Password))
+                    return BadRequest(new { message = "Mật khẩu cũ không chính xác!" });
+
+                if (dto.Password.Length < 6)
+                    return BadRequest(new { message = "Mật khẩu mới phải có ít nhất 6 ký tự!" });
+
+                user.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            }
+
+            await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Update Profile", $"Cập nhật thông tin người dùng: {user.Username} (ID = {user.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new { message = "Cập nhật thông tin thành công!" });
+        }
     }
 }
