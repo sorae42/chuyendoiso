@@ -29,13 +29,23 @@ namespace chuyendoiso.Controllers
         {
             var parentCriterias = await _context.ParentCriteria
                 .Include(p => p.TargetGroup)
+                .Include(p => p.EvaluationPeriod)
                 .Include(p => p.SubCriterias)
                 .Select(p => new {
                     p.Id,
                     p.Name,
                     p.MaxScore,
-                    GroupId = p.TargetGroup.Id,
-                    SubCriteriaId = p.SubCriterias.Select(s => s.Id)
+                    Group = p.TargetGroup == null ? null : new
+                    {
+                        p.TargetGroup.Id,
+                        p.TargetGroup.Name
+                    },
+                    EvaluationPeriod = p.EvaluationPeriod == null ? null : new
+                    {
+                        p.EvaluationPeriod.Id,
+                        p.EvaluationPeriod.Name
+                    },
+                    SubCriteriaIds = p.SubCriterias.Select(s => s.Id).ToList()
                 })
                 .ToListAsync();
 
@@ -55,8 +65,21 @@ namespace chuyendoiso.Controllers
                     p.Id,
                     p.Name,
                     p.MaxScore,
-                    GroupId = p.TargetGroup.Id,
-                    p.SubCriterias
+                    GroupId = p.TargetGroup == null ? null : new
+                    {
+                        p.TargetGroup.Id,
+                        p.TargetGroup.Name
+                    },
+                    EvaluationPeriod = p.EvaluationPeriod == null ? null : new
+                    {
+                        p.EvaluationPeriod.Id,
+                        p.EvaluationPeriod.Name
+                    },
+                    SubCriterias = p.SubCriterias.Select(s => new
+                    {
+                        s.Id,
+                        s.Name
+                    }).ToList()
                 })
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -74,43 +97,62 @@ namespace chuyendoiso.Controllers
         [Authorize]
         public async Task<IActionResult> Create([FromBody] ParentCriteriaDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Name) || dto.MaxScore == null || string.IsNullOrWhiteSpace(dto.TargetGroupName))
+            if (string.IsNullOrWhiteSpace(dto.Name))
             {
-                return BadRequest(new { message = "Tên tiêu chí, điểm tối đa và nhóm tiêu chí là bắt buộc!" });
+                return BadRequest(new { message = "Tên tiêu chí là bắt buộc!" });
             }
 
-            if (await _context.ParentCriteria.AnyAsync(p => p.Name == dto.Name))
+            bool isDuplicate = await _context.ParentCriteria.AnyAsync(p => p.Name == dto.Name);
+            if (isDuplicate)
             {
                 return BadRequest(new { message = "Tiêu chí đã tồn tại!" });
             }
 
-            var group = await _context.TargetGroup.FirstOrDefaultAsync(g => g.Name == dto.TargetGroupName);
-            if (group == null)
-                return BadRequest(new { message = "Không tìm thấy nhóm chỉ tiêu!" });
+            int? groupId = null;
+            if (dto.TargetGroupId.HasValue)
+            {
+                var group = await _context.TargetGroup.FindAsync(dto.TargetGroupId.Value);
+                if (group == null)
+                {
+                    return BadRequest(new { message = "Không tìm thấy nhóm chỉ tiêu!" });
+                }
+                groupId = group.Id;
+            }
 
             var parent = new ParentCriteria
             {
                 Name = dto.Name,
-                MaxScore = dto.MaxScore.Value,
+                MaxScore = dto.MaxScore,
                 Description = dto.Description,
                 EvidenceInfo = dto.EvidenceInfo,
-                TargetGroupId = group.Id
+                TargetGroupId = groupId,
+                EvaluationPeriodId = dto.EvaluationPeriodId
             };
 
-            _context.ParentCriteria.Add(parent);
-            await _context.SaveChangesAsync();
-
-            await _logService.WriteLogAsync("Create", $"Tạo tiêu chí cha: {parent.Name} (ID = {parent.Id}) thuộc nhóm: {group.Name} ({group.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
-
-            return CreatedAtAction(nameof(Details), new { id = parent.Id}, new
+            try
             {
-                parent.Id,
-                parent.Name,
-                parent.MaxScore,
-                parent.Description,
-                parent.EvidenceInfo,
-                Group = group.Name
-            });
+                _context.ParentCriteria.Add(parent);
+                await _context.SaveChangesAsync();
+
+                await _logService.WriteLogAsync("Create",
+                    $"Tạo tiêu chí cha: {parent.Name} (ID = {parent.Id})",
+                    User.FindFirst(ClaimTypes.Name)?.Value);
+
+                return CreatedAtAction(nameof(Details), new { id = parent.Id }, new
+                {
+                    parent.Id,
+                    parent.Name,
+                    parent.MaxScore,
+                    parent.Description,
+                    parent.EvidenceInfo,
+                    parent.TargetGroupId,
+                    parent.EvaluationPeriodId
+                });
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(500, new { message = "Lỗi khi lưu vào cơ sở dữ liệu.", detail = ex.InnerException?.Message ?? ex.Message });
+            }
         }
 
         // PUT: api/parentcriterias/id
@@ -120,14 +162,19 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> Edit(int id, [FromBody] ParentCriteriaDto dto)
         {
             var existing = await _context.ParentCriteria.Include(p => p.TargetGroup).FirstOrDefaultAsync(p => p.Id == id);
+
             if (existing == null)
                 return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
 
             if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != existing.Name)
-            { 
-                bool isNameExists = await _context.ParentCriteria.AnyAsync(p => p.Name == dto.Name);
+            {
+                bool isNameExists = await _context.ParentCriteria.AnyAsync(p =>
+                    p.Name == dto.Name &&
+                    p.Id != id &&
+                    p.TargetGroupId == dto.TargetGroupId);
+
                 if (isNameExists)
-                    return BadRequest(new { message = "Tên tiêu chí đã tồn tại!" });
+                    return BadRequest(new { message = "Tên tiêu chí đã tồn tại trong nhóm chỉ tiêu này!" });
 
                 existing.Name = dto.Name;
             }
@@ -141,13 +188,22 @@ namespace chuyendoiso.Controllers
             if (!string.IsNullOrWhiteSpace(dto.EvidenceInfo))
                 existing.EvidenceInfo = dto.EvidenceInfo;
 
-            if (!string.IsNullOrWhiteSpace(dto.TargetGroupName))
+            if (dto.TargetGroupId.HasValue && dto.TargetGroupId != existing.TargetGroupId)
             {
-                var group = await _context.TargetGroup.FirstOrDefaultAsync(g => g.Name == dto.TargetGroupName);
-                if (group == null)
-                    return BadRequest(new { message = "Tên nhóm không tồn tại!" });
+                var newGroup = await _context.TargetGroup.FindAsync(dto.TargetGroupId.Value);
+                if (newGroup == null)
+                    return BadRequest(new { message = "Không tìm thấy nhóm chỉ tiêu mới!" });
 
-                existing.TargetGroupId = group.Id;
+                existing.TargetGroupId = newGroup.Id;
+            }
+
+            if (dto.EvaluationPeriodId.HasValue && dto.EvaluationPeriodId != existing.EvaluationPeriodId)
+            {
+                var period = await _context.EvaluationPeriod.FindAsync(dto.EvaluationPeriodId.Value);
+                if (period == null)
+                    return BadRequest(new { message = "Không tìm thấy kỳ đánh giá mới!" });
+
+                existing.EvaluationPeriodId = dto.EvaluationPeriodId.Value;
             }
 
             await _context.SaveChangesAsync();

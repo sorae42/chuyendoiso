@@ -6,6 +6,7 @@
         public float? MaxScore { get; set; }
         public string? Description { get; set; }
         public string? EvidenceInfo { get; set; }
-        public string? TargetGroupName { get; set; }
+        public int? TargetGroupId { get; set; }
+        public int? EvaluationPeriodId { get; set; }
     }
 }
