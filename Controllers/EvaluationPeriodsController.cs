@@ -62,6 +62,7 @@ namespace chuyendoiso.Controllers
                     p.Name,
                     p.StartDate,
                     p.EndDate,
+                    p.IsLocked,
                     Units = p.EvaluationUnits.Select(eu => new
                     {
                         eu.Unit.Id,
