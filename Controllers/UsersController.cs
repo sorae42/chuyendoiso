@@ -86,6 +86,7 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var user = await _context.Auth
+                .Include(u => u.Unit)
                 .Where( u => u.Id == id)
                 .Select( u => new
                 {
@@ -93,7 +94,13 @@ namespace chuyendoiso.Controllers
                     u.Username,
                     u.FullName,
                     u.Email,
-                    u.Phone
+                    u.Phone,
+                    u.Role,
+                    Unit = u.Unit != null ? new
+                    {
+                        u.Unit.Id,
+                        u.Unit.Name
+                    } : null
                 })
                 .FirstOrDefaultAsync();
 
