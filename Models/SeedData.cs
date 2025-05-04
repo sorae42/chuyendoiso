@@ -101,7 +101,14 @@ namespace chuyendoiso.Models
                     {
                         Name = "Kỳ đánh giá 2024",
                         StartDate = UtcDate(2024, 1, 1),
-                        EndDate = UtcDate(2024, 12, 31)
+                        EndDate = UtcDate(2024, 12, 31),
+                        EvaluationUnits = new List<EvaluationUnit>
+                        {
+                            new EvaluationUnit { UnitId = 1 },
+                            new EvaluationUnit { UnitId = 2 },
+                            new EvaluationUnit { UnitId = 3 }
+                        },
+                        
                     });
                     context.SaveChanges();
                     Console.WriteLine("Seeded EvaluationPeriod.");
@@ -122,16 +129,18 @@ namespace chuyendoiso.Models
                 // Seed ParentCriteria
                 if (!context.ParentCriteria.Any())
                 {
-                    
-                    context.ParentCriteria.AddRange(
-                        new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 1, EvaluationPeriodId = 1},
-                        new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroupId = 1, EvaluationPeriodId = 1 },
-                        new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroupId = 1, EvaluationPeriodId = 1 },
-                        new ParentCriteria { Name = "CHỈ TIÊU CHUNG", TargetGroupId = 2, EvaluationPeriodId = 1 },
-                        new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 2, EvaluationPeriodId = 1 },
-                        new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroupId = 2, EvaluationPeriodId = 1 },
-                        new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroupId = 2, EvaluationPeriodId = 1 }
-                    );
+                    var pcList = new List<ParentCriteria>
+                    {
+                        new ParentCriteria { Id = 1, Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 1 },
+                        new ParentCriteria { Id = 2, Name = "KINH TẾ SỐ", TargetGroupId = 1 },
+                        new ParentCriteria { Id = 3, Name = "XÃ HỘI SỐ", TargetGroupId = 1 },
+                        new ParentCriteria { Id = 4, Name = "CHỈ TIÊU CHUNG", TargetGroupId = 2 },
+                        new ParentCriteria { Id = 5, Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 2 },
+                        new ParentCriteria { Id = 6, Name = "KINH TẾ SỐ", TargetGroupId = 2 },
+                        new ParentCriteria { Id = 7, Name = "XÃ HỘI SỐ", TargetGroupId = 2 }
+                    };
+
+                    context.ParentCriteria.AddRange(pcList);
                     context.SaveChanges();
                     Console.WriteLine("Seeded Parent Criteria.");
                 }

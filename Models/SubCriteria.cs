@@ -16,5 +16,5 @@ namespace chuyendoiso.Models
 
         public DateTime? EvaluatedAt { get; set; } // Thời gian đánh giá
         public string? UnitEvaluate { get; set; } // Đơn vị đánh giá
-}
+    }
 }

@@ -7,5 +7,6 @@
         public DateTime? EndDate { get; set; }
 
         public List<int>? UnitIds { get; set; }
+        public List<int>? ParentCriteriaIds { get; set; }
     }
 }

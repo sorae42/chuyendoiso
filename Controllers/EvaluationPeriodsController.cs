@@ -2,7 +2,6 @@
 using chuyendoiso.DTOs;
 using chuyendoiso.Models;
 using chuyendoiso.Services;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -80,54 +79,6 @@ namespace chuyendoiso.Controllers
             return Ok(result);
         }
 
-        // POST: api/evaluationperiods/create
-        // Params: Name, StartDate, EndDate, UnitId
-        [HttpPost("create")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> Create([FromBody] EvaluationPeriodDto dto)
-        {
-            if (string.IsNullOrWhiteSpace(dto.Name) || dto.StartDate == null || dto.EndDate == null)
-            {
-                return BadRequest(new { message = "Vui lòng nhập tên, ngày bắt đầu và ngày kết thúc!" });
-            }
-
-            var period = new EvaluationPeriod
-            {
-                Name = dto.Name,
-                StartDate = dto.StartDate.Value,
-                EndDate = dto.EndDate.Value
-            };
-
-            _context.EvaluationPeriod.Add(period);
-            await _context.SaveChangesAsync();
-
-            // Gán đơn vị (nếu có)
-            if (dto.UnitIds != null && dto.UnitIds.Any())
-            {
-                foreach (var unitId in dto.UnitIds)
-                {
-                    _context.EvaluationUnit.Add(new EvaluationUnit
-                    {
-                        EvaluationPeriodId = period.Id,
-                        UnitId = unitId
-                    });
-                }
-                await _context.SaveChangesAsync();
-            }
-
-            await _logService.WriteLogAsync("Create", $"Tạo kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
-
-            return Ok(new
-            {
-                message = "Tạo kỳ đánh giá thành công!",
-                period.Id,
-                period.Name,
-                period.StartDate,
-                period.EndDate
-            });
-
-        }
-
         // GET: api/evaluationperiods/1
         //Params: id
         [HttpGet("{id}")]
@@ -136,7 +87,8 @@ namespace chuyendoiso.Controllers
         {
             var period = await _context.EvaluationPeriod
                 .Include(p => p.EvaluationUnits)
-                .ThenInclude(eu => eu.Unit)
+                    .ThenInclude(eu => eu.Unit)
+                .Include(p => p.ParentCriterias)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (period == null)
@@ -156,16 +108,101 @@ namespace chuyendoiso.Controllers
                 period.LockedUntil,
                 period.LockReason,
                 period.LockAttachment,
+
                 Units = period.EvaluationUnits.Select(eu => new
                 {
                     eu.Unit.Id,
                     eu.Unit.Name,
                     eu.Unit.Code,
                     eu.Unit.Type
+                }),
+
+                ParentCriterias = period.ParentCriterias.Select(pc => new
+                {
+                    pc.Id,
+                    pc.Name,
+                    pc.MaxScore,
+                    pc.Description,
+                    pc.EvidenceInfo,
+                    pc.TargetGroupId
                 })
             };
 
             return Ok(result);
+        }
+
+        // POST: api/evaluationperiods/create
+        // Params: Name, StartDate, EndDate, UnitId
+        [HttpPost("create")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> Create([FromBody] EvaluationPeriodDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name) || dto.StartDate == null || dto.EndDate == null)
+            {
+                return BadRequest(new { message = "Vui lòng nhập tên, ngày bắt đầu và ngày kết thúc!" });
+            }
+
+            var period = new EvaluationPeriod
+            {
+                Name = dto.Name,
+                StartDate = DateTime.SpecifyKind(dto.StartDate.Value, DateTimeKind.Utc),
+                EndDate = DateTime.SpecifyKind(dto.EndDate.Value, DateTimeKind.Utc)
+            };
+
+            _context.EvaluationPeriod.Add(period);
+            await _context.SaveChangesAsync();
+
+            // Gán đơn vị (nếu có)
+            if (dto.UnitIds != null && dto.UnitIds.Any())
+            {
+                foreach (var unitId in dto.UnitIds)
+                {
+                    _context.EvaluationUnit.Add(new EvaluationUnit
+                    {
+                        EvaluationPeriodId = period.Id,
+                        UnitId = unitId
+                    });
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            // Thêm tiêu chí cha (và tiêu chí con nếu có thể sau này)
+            if (dto.ParentCriteriaIds != null && dto.ParentCriteriaIds.Any())
+            {
+
+                // Kiểm tra xem có tiêu chí nào đã gán kỳ đánh giá chưa
+                var alreadyUsed = await _context.ParentCriteria
+                    .Where(p => dto.ParentCriteriaIds.Contains(p.Id) && p.EvaluationPeriodId != null)
+                    .ToListAsync();
+
+                if (alreadyUsed.Any())
+                {
+                    var names = string.Join(", ", alreadyUsed.Select(p => p.Name));
+                    return BadRequest(new { message = $"Các tiêu chí sau đã được sử dụng trong kỳ khác: {names}" });
+                }
+                // Gán các tiêu chí vào kỳ này
+                var toAssign = await _context.ParentCriteria
+                    .Where(p => dto.ParentCriteriaIds.Contains(p.Id))
+                    .ToListAsync();
+
+                foreach (var pc in toAssign)
+                {
+                    pc.EvaluationPeriodId = period.Id;
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            await _logService.WriteLogAsync("Create", $"Tạo kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new
+            {
+                message = "Tạo kỳ đánh giá thành công!",
+                period.Id,
+                period.Name,
+                period.StartDate,
+                period.EndDate
+            });
         }
 
         // PUT: api/evaluationperiods/1
@@ -184,10 +221,10 @@ namespace chuyendoiso.Controllers
                 existing.Name = dto.Name;
 
             if (dto.StartDate.HasValue)
-                existing.StartDate = dto.StartDate.Value;
+                existing.StartDate = DateTime.SpecifyKind(dto.StartDate.Value, DateTimeKind.Utc);
 
             if (dto.EndDate.HasValue)
-                existing.EndDate = dto.EndDate.Value;
+                existing.EndDate = DateTime.SpecifyKind(dto.EndDate.Value, DateTimeKind.Utc);
 
             await _context.SaveChangesAsync();
 
@@ -206,6 +243,46 @@ namespace chuyendoiso.Controllers
                         UnitId = unitId
                     });
                 }
+                await _context.SaveChangesAsync();
+            }
+
+            if (dto.ParentCriteriaIds != null)
+            {
+                // Lấy các tiêu chí đang gán cho kỳ hiện tại
+                var existingParents = await _context.ParentCriteria
+                    .Where(p => p.EvaluationPeriodId == existing.Id)
+                    .ToListAsync();
+
+                // GỠ các tiêu chí KHÔNG còn trong danh sách mới
+                var toRemove = existingParents
+                    .Where(p => !dto.ParentCriteriaIds.Contains(p.Id))
+                    .ToList();
+
+                foreach (var p in toRemove)
+                {
+                    p.EvaluationPeriodId = null; // gỡ khỏi kỳ
+                }
+
+                // GÁN các tiêu chí mới (kiểm tra đã bị dùng chưa)
+                var alreadyUsed = await _context.ParentCriteria
+                    .Where(p => dto.ParentCriteriaIds.Contains(p.Id) && p.EvaluationPeriodId != null && p.EvaluationPeriodId != existing.Id)
+                    .ToListAsync();
+
+                if (alreadyUsed.Any())
+                {
+                    var names = string.Join(", ", alreadyUsed.Select(p => p.Name));
+                    return BadRequest(new { message = $"Các tiêu chí sau đã được sử dụng trong kỳ khác: {names}" });
+                }
+
+                var toAdd = await _context.ParentCriteria
+                    .Where(p => dto.ParentCriteriaIds.Contains(p.Id) && p.EvaluationPeriodId != existing.Id)
+                    .ToListAsync();
+
+                foreach (var p in toAdd)
+                {
+                    p.EvaluationPeriodId = existing.Id;
+                }
+
                 await _context.SaveChangesAsync();
             }
 
@@ -243,7 +320,7 @@ namespace chuyendoiso.Controllers
             return Ok(new { message = "Xóa kỳ đánh giá thành công!" });
         }
 
-        // POST: api/evaluationperiods/lock
+        // POST: api/evaluationperiods/lockperiod?id=2
         // Params: id, reason, until
         [HttpPost("lockperiod")]
         [Authorize(Roles = "admin")]
@@ -288,8 +365,35 @@ namespace chuyendoiso.Controllers
             return Ok(new { message = "Khóa kỳ đánh giá thành công!" });
         }
 
+        [HttpPost("unlockperiod")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UnlockPeriod(int id, [FromBody] UnlockPeriodDTO dto)
+        {
+            var period = await _context.EvaluationPeriod.FindAsync(id);
+            if (period == null)
+                return NotFound(new { message = "Không tìm thấy kỳ đánh giá!" });
+
+            if (!period.IsLocked)
+                return BadRequest(new { message = "Kỳ đánh giá này hiện đang mở." });
+
+            // Mở khóa thủ công
+            period.IsLocked = false;
+            period.LockedUntil = null;
+            period.LockReason = null;
+            period.LockAttachment = null;
+
+            await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Unlock", $"Mở khóa kỳ đánh giá: {period.Name} (ID = {period.Id}) - Lý do: {dto.Reason ?? "(không có)"}",
+                User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new { message = "Mở khóa kỳ đánh giá thành công!" });
+        }
+
         private async Task CheckAndAutoUnlock(EvaluationPeriod period)
         {
+            Console.WriteLine($"[DEBUG] Now: {DateTime.UtcNow:o}, LockedUntil: {period.LockedUntil:o}");
+
             if (period.IsLocked && period.LockedUntil.HasValue && DateTime.UtcNow > period.LockedUntil.Value)
             {
                 period.IsLocked = false;
