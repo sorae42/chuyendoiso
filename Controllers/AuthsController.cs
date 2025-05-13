@@ -7,6 +7,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using chuyendoiso.Interface;
 using chuyendoiso.Services;
+using chuyendoiso.Models;
+using chuyendoiso.DTOs;
 
 namespace chuyendoiso.Controllers
 {
@@ -31,43 +33,34 @@ namespace chuyendoiso.Controllers
         // Params: username, password
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> LoginAsync([FromForm] string password, [FromForm] string username)
+        public async Task<IActionResult> LoginAsync([FromForm] string password, [FromForm] string username, [FromForm] string? trustedToken = null)
         {
-            var user = _context.Auth.Where(x => x.Username == username).FirstOrDefault();
-
+            var user = _context.Auth.FirstOrDefault(x => x.Username == username);
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
             {
                 return Unauthorized(new { message = "Tên đăng nhập hoặc mật khẩu không chính xác!" });
             }
 
-            // Lấy thông tin cấu hình JWT từ appsettings.json
-            var jwtSettings = _configuration.GetSection("Jwt");
-            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
-
-            var claims = new List<Claim>
+            if (user.IsTwoFactorEnabled)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
+                var now = DateTime.UtcNow;
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(60),
-                Issuer = jwtSettings["Issuer"],
-                Audience = jwtSettings["Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
-            };
+                if (trustedToken == null || user.TrustedDeviceToken != trustedToken || user.TrustedUntil < now)
+                {
+                    // Generate OTP code
+                    var otp = new Random().Next(100000, 999999).ToString();
+                    user.OtpCode = otp;
+                    user.OtpExpires = now.AddMinutes(5);
+                    _context.SaveChanges();
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
+                    // Send OTP code to email
+                    await _emailSender.SendEmailAsync(user.Email, "Mã OTP đăng nhập", $"Mã OTP của bạn là <b>{otp}</b>. Hiệu lực trong 5 phút.");
+                    return Ok(new { message = "Cần nhập OTP", needOtp = true });
+                }
+            }
 
-            await _logService.WriteLogAsync("Login", $"Đăng nhập thành công", user.Username);
-
-            return Ok(new { message = "Đăng nhập thành công!", token = tokenString });
+            var jwt = GenerateJwtToken(user);
+            return Ok(new { message = "Đăng nhập thành công", token = jwt, trustedToken = user.TrustedDeviceToken });
         }
 
         // POST: api/auths/logout
@@ -146,6 +139,76 @@ namespace chuyendoiso.Controllers
             _context.SaveChanges();
 
             return Ok(new { message = "Đặt lại mật khẩu thành công!" });
+        }
+
+        // POST: api/auths/toggle-2fa
+        [HttpPost("toggle-2fa")]
+        [Authorize]
+        public IActionResult ToggleTwoFactor([FromBody] bool enable2FA)
+        {
+            var username = User.Identity?.Name;
+            var user = _context.Auth.FirstOrDefault(x => x.Username == username);
+            if (user == null)
+            {
+                return NotFound(new { message = "Người dùng không tồn tại!" });
+            }
+
+            user.IsTwoFactorEnabled = enable2FA;
+            _context.SaveChanges();
+
+            return Ok(new { message = $"Xác thực 2 bước {(enable2FA ? "đã bật" : "đã tắt")}" });
+        }
+
+        // POST: api/auths/verify-otp
+        [HttpPost("verify-otp")]
+        [AllowAnonymous]
+        public IActionResult VerifyOtp([FromForm] string username, [FromForm] string otp, [FromForm] bool trustDevice = true)
+        {
+            var user = _context.Auth.FirstOrDefault(x => x.Username == username);
+            if (user == null || user.OtpCode != otp || user.OtpExpires < DateTime.UtcNow)
+                return BadRequest(new { message = "OTP không hợp lệ hoặc đã hết hạn" });
+
+            user.OtpCode = null;
+            user.OtpExpires = null;
+
+            if (trustDevice)
+            {
+                user.TrustedDeviceToken = Guid.NewGuid().ToString();
+                user.TrustedUntil = DateTime.UtcNow.AddYears(1);
+            }
+
+            _context.SaveChanges();
+
+            var jwt = GenerateJwtToken(user);
+            return Ok(new { message = "Xác thực thành công", token = jwt, trustedToken = user.TrustedDeviceToken });
+        }
+
+        // Method generate jwt token
+        private string GenerateJwtToken(Auth user)
+        {
+            // Lấy thông tin cấu hình JWT từ appsettings.json
+            var jwtSettings = _configuration.GetSection("Jwt");
+            var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(60),
+                Issuer = jwtSettings["Issuer"],
+                Audience = jwtSettings["Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
         }
     }
 }

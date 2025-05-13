@@ -20,5 +20,13 @@ namespace chuyendoiso.Models
         // Token reset password
         public string? ResetToken { get; set; }
         public DateTime? ResetTokenExpires { get; set; }
+
+        // 2FA
+        public bool IsTwoFactorEnabled { get; set; } = false;
+        public string? OtpCode { get; set; }
+        public DateTime? OtpExpires { get; set; }
+        public string? TrustedDeviceToken { get; set; }
+        public DateTime? TrustedUntil { get; set; }
+
     }
 }
