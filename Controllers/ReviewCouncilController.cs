@@ -138,7 +138,7 @@ namespace chuyendoiso.Controllers
         // Params: reviewCouncilId, authId
         // Thêm đơn vị đánh giá vào hội đồng
         [HttpPost("add-reviewer")]
-        [Authorize(Roles = "chair")]
+        [Authorize(Roles = "chair,admin")]
         public async Task<IActionResult> AddReviewer([FromBody] ReviewerDto dto)
         {
             var council = await _context.ReviewCouncil.FindAsync(dto.ReviewCouncilId);
