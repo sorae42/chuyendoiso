@@ -132,6 +132,20 @@ namespace chuyendoiso.Controllers
             return Ok(result);
         }
 
+        // GET: api/evaluationperiods/years
+        [HttpGet("years")]
+        [Authorize]
+        public async Task<IActionResult> GetAvailableYears()
+        {
+            var years = await _context.EvaluationPeriod
+                .Select(p => p.StartDate.Year)
+                .Distinct()
+                .OrderByDescending(y => y)
+                .ToListAsync();
+
+            return Ok(years);
+        }
+
         // POST: api/evaluationperiods/create
         // Params: Name, StartDate, EndDate, UnitId
         [HttpPost("create")]
