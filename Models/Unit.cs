@@ -16,5 +16,6 @@ namespace chuyendoiso.Models
         // Navigation properties
         public List<Auth>? Users { get; set; }
         public List<EvaluationUnit>? EvaluationUnits { get; set; }
+        public List<ReviewAssignment>? ReviewAssignments { get; set; }
     }
 }

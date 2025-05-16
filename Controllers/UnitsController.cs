@@ -49,15 +49,16 @@ namespace chuyendoiso.Controllers
             return Ok(units);
         }
 
-
         // GET: api/units/{id}
         [HttpGet("{id}")]
         [Authorize]
-        public async Task<IActionResult> GetUnit(int id)
+        public async Task<IActionResult> Details(int id)
         {
             var unit = await _context.Unit
                 .Where(u => u.Id == id)
                 .Include(u => u.Users)
+                .Include(u => u.ReviewAssignments!)
+                    .ThenInclude(a => a.SubCriteria)
                 .Select(u => new
                 {
                     u.Id,
@@ -71,14 +72,46 @@ namespace chuyendoiso.Controllers
                         user.Id,
                         user.FullName,
                         user.Username
+                    }).ToList(),
+                    SubCriterias = u.ReviewAssignments.Select(a => new
+                    {
+                        a.SubCriteriaId,
+                        a.SubCriteria!.Name,
+                        a.ReviewerId
                     }).ToList()
-                }).FirstOrDefaultAsync();
+                })
+                .FirstOrDefaultAsync();
 
             if (unit == null)
             {
                 return NotFound(new { message = "Đơn vị không tồn tại!" });
             }
             return Ok(unit);
+        }
+
+        // GET: api/units/assignments
+        [HttpGet("assignments")]
+        [Authorize]
+        public async Task<IActionResult> GetUnitAssignment()
+        {
+            var assignments = await _context.ReviewAssignment
+                .Include(a => a.Unit)
+                .Include(a => a.SubCriteria)
+                .Include(a => a.Reviewer)
+                    .ThenInclude(r => r.Auth)
+                .Select(a => new
+                {
+                    UnitId = a.UnitId,
+                    UnitName = a.Unit.Name,
+                    SubCriteriaId = a.SubCriteriaId,
+                    SubCriteriaName = a.SubCriteria != null ? a.SubCriteria.Name : null,
+                    ReviewerName = a.Reviewer.Auth.FullName,
+                    ReviewerUsername = a.Reviewer.Auth.Username,
+                    ReviewCouncilId = a.Reviewer.ReviewCouncilId,
+                })
+                .ToListAsync();
+
+            return Ok(assignments);
         }
 
         // POST: api/units/create
