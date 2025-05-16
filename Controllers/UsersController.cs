@@ -52,7 +52,8 @@ namespace chuyendoiso.Controllers
                     u.Username,
                     u.FullName,
                     u.Email,
-                    u.Phone
+                    u.Phone,
+                    u.IsTwoFactorEnabled
                 })
                 .ToListAsync();
 
@@ -100,7 +101,8 @@ namespace chuyendoiso.Controllers
                     {
                         u.Unit.Id,
                         u.Unit.Name
-                    } : null
+                    } : null,
+                    u.IsTwoFactorEnabled
                 })
                 .FirstOrDefaultAsync();
 
