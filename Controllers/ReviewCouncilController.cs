@@ -86,6 +86,45 @@ namespace chuyendoiso.Controllers
             return Ok(result);
         }
 
+        // GET: api/reviewcouncil/assignments/{id}
+        // Params: id
+        [HttpGet("assignments/{id}")]
+        [Authorize]
+        public async Task<IActionResult> GetAssignments(int id)
+        {
+            var council = await _context.ReviewCouncil
+                .Include(c => c.Reviewers)
+                    .ThenInclude(r => r.Auth)
+                .Include(c => c.Reviewers)
+                    .ThenInclude(r => r.ReviewAssignments)
+                        .ThenInclude(a => a.Unit)
+                .Include(c => c.Reviewers)
+                    .ThenInclude(r => r.ReviewAssignments)
+                        .ThenInclude(a => a.SubCriteria)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (council == null)
+                return NotFound(new { message = "Không tìm thấy hội đồng!" });
+
+            var result = council.Reviewers.Select(r => new
+            {
+                ReviewerId = r.Id,
+                FullName = r.Auth.FullName,
+                Username = r.Auth.Username,
+                IsChair = r.IsChair,
+                Assignments = r.ReviewAssignments.Select(a => new
+                {
+                    a.Id,
+                    UnitId = a.UnitId,
+                    UnitName = a.Unit?.Name,
+                    SubCriteriaId = a.SubCriteriaId,
+                    SubCriteriaName = a.SubCriteria?.Name
+                }).ToList()
+            });
+
+            return Ok(result);
+        }
+
         // POST: api/reviewcouncil/create
         // Params: Name, Description, Id creator
         // Tạo hội đồng đánh giá 
@@ -136,7 +175,7 @@ namespace chuyendoiso.Controllers
         
         // POST: api/reviewcouncil/add-reviewer
         // Params: reviewCouncilId, authId
-        // Thêm đơn vị đánh giá vào hội đồng
+        // Thêm thành viên thẩm định vào hội đồng
         [HttpPost("add-reviewer")]
         [Authorize(Roles = "chair,admin")]
         public async Task<IActionResult> AddReviewer([FromBody] ReviewerDto dto)
@@ -174,7 +213,7 @@ namespace chuyendoiso.Controllers
         // Params: reviewerId, unitId, subCriteriaId
         // Phân công thẩm định chỉ tiêu
         [HttpPost("assign")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,chair")]
         public async Task<IActionResult> Assign([FromBody] ReviewAssignmentDto dto)
         {
             var reviewer = await _context.Reviewer
@@ -217,33 +256,72 @@ namespace chuyendoiso.Controllers
             });
         }
 
-        // PUT: api/reviewcouncil/update/{id}
+        // PUT: api/reviewcouncil/{id}
         // Params: id, name, description
         [HttpPut("{id}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Update(int id, [FromBody] ReviewCouncilDto dto)
         {
-            var existing = await _context.ReviewCouncil.FindAsync(id);
-            if (existing == null)
+            var council = await _context.ReviewCouncil
+                .Include(c => c.Reviewers)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (council == null)
                 return NotFound(new { message = "Không tìm thấy hội đồng!" });
 
             if (!string.IsNullOrWhiteSpace(dto.Name))
-                existing.Name = dto.Name;
+                council.Name = dto.Name;
 
             if (!string.IsNullOrWhiteSpace(dto.Description))
-                existing.Description = dto.Description;
+                council.Description = dto.Description;
+
+            // Cập nhật chủ tịch nếu có
+            if (dto.ChairAuthId.HasValue)
+            {
+                var newChair = await _context.Auth.FindAsync(dto.ChairAuthId.Value);
+                if (newChair == null)
+                    return BadRequest(new { message = "Không tìm thấy người dùng!" });
+
+                // Xóa chủ tịch cũ
+                var oldChair = council.Reviewers.FirstOrDefault(r => r.IsChair);
+                if (oldChair != null)
+                {
+                    oldChair.IsChair = false;
+                }
+                else
+                {
+                    _context.Reviewer.Add(new Reviewer
+                    {
+                        ReviewCouncilId = council.Id,
+                        AuthId = newChair.Id,
+                        IsChair = true
+                    });
+                }
+
+                council.CreatedById = dto.ChairAuthId.Value;
+            }
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Update", $"Cập nhật hội đồng: {existing.Name} (ID = {existing.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync("Update", $"Cập nhật hội đồng: {council.Name} (ID = {council.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
 
-            return Ok(new { message = "Cập nhật hội đồng thành công!", data = new { existing.Id, existing.Name, existing.Description } });
+            return Ok(new 
+            { 
+                message = "Cập nhật hội đồng thành công!", 
+                data = new 
+                { 
+                    council.Id, 
+                    council.Name, 
+                    council.Description,
+                    NewChairId = dto.ChairAuthId
+                } 
+            });
         }
 
-        // Delete: api/reviewcouncil/delete/{id}
+        // Delete: api/reviewcouncil/delete-reviewer/{id}
         // Params: id
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "admin")]
+        [HttpDelete("delete-reviewer/{id}")]
+        [Authorize(Roles = "admin,chair")]
         public async Task<IActionResult> DeleteReviewer(int id)
         {
             var existing = await _context.Reviewer
@@ -262,6 +340,39 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync("Delete Reviewer", $"Xóa thành viên hội đồng: {existing.Auth.Username}", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            return Ok(new { message = "Xóa thành viên hội đồng thành công!" });
+        }
+
+        // DELETE: api/reviewcouncil/delete-council/{id}
+        // Params: id
+        [HttpDelete("delete-council/{id}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeleteCouncil(int id)
+        {
+            var council = await _context.ReviewCouncil
+                .Include(c => c.Reviewers)
+                    .ThenInclude(r => r.ReviewAssignments)
+                .Include(c => c.Reviewers)
+                    .ThenInclude(r => r.Auth)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (council == null)
+                return NotFound(new { message = "Không tìm thấy hội đồng!" });
+
+            // Kiểm tra thành viên đã được phân công thẩm định
+            bool anyAssignments = council.Reviewers.Any(r => r.ReviewAssignments.Any());
+            if (anyAssignments)
+                return BadRequest(new { message = "Không thể xóa hội đồng đã có thành viên được phân công thẩm định!" });
+
+            // Xóa tất cả thành viên hội đồng
+            _context.Reviewer.RemoveRange(council.Reviewers);
+
+            // Xóa hội đồng
+            _context.ReviewCouncil.Remove(council);
+            await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync("Delete Council", $"Xóa hội đồng '{council.Name}'", User.Identity?.Name);
 
             return Ok(new { message = "Xóa hội đồng thành công!" });
         }
