@@ -292,67 +292,63 @@ namespace chuyendoiso.Models
                         var council = new ReviewCouncil
                         {
                             Name = "Hội đồng đánh giá chuyển đổi số tỉnh Khánh Hòa",
-                            CreatedAt = DateTime.SpecifyKind(new DateTime(2024, 1, 1), DateTimeKind.Utc),
+                            CreatedAt = UtcDate(2024, 1, 1),
                             CreatedById = admin.Id
                         };
 
                         context.ReviewCouncil.Add(council);
                         context.SaveChanges();
 
-                        var chairReviewer = new Reviewer
+                        // Seed 1 Chủ tịch: admin
+                        context.Reviewer.Add(new Reviewer
                         {
                             ReviewCouncilId = council.Id,
                             AuthId = admin.Id,
                             IsChair = true
-                        };
-
-                        context.Reviewer.Add(chairReviewer);
+                        });
                         context.SaveChanges();
-
-                        Console.WriteLine("Seeded ReviewCouncil and Chair Reviewer.");
+                        Console.WriteLine("Seeded ReviewCouncil and admin as Chair.");
                     }
                     else
                     {
-                        Console.WriteLine("Admin not found. Cannot seed ReviewCouncil or Chair Reviewer.");
+                        Console.WriteLine("Admin not found. Cannot seed ReviewCouncil.");
                     }
                 }
-                else
-                {
-                    Console.WriteLine("ReviewCouncil data already exists. Skip");
-                }
 
-                // Seed Reviewer
-                if (!context.Reviewer.Any(r => !r.IsChair))
-                {
-                    var user = context.Auth.FirstOrDefault(u => u.Username == "admin");
-                    var council = context.ReviewCouncil.FirstOrDefault();
+                // Seed 1 thành viên reviewer (tp_nhatrang)
+                var nhatrangUser = context.Auth.FirstOrDefault(u => u.Username == "tp_nhatrang");
+                var existingCouncil = context.ReviewCouncil.FirstOrDefault();
 
-                    if (user != null && council != null)
+                if (nhatrangUser != null && existingCouncil != null)
+                {
+                    bool alreadyExists = context.Reviewer.Any(r =>
+                        r.ReviewCouncilId == existingCouncil.Id && r.AuthId == nhatrangUser.Id);
+
+                    if (!alreadyExists)
                     {
                         context.Reviewer.Add(new Reviewer
                         {
-                            ReviewCouncilId = council.Id,
-                            AuthId = user.Id,
-                            IsChair = true
+                            ReviewCouncilId = existingCouncil.Id,
+                            AuthId = nhatrangUser.Id,
+                            IsChair = false
                         });
                         context.SaveChanges();
-
-                        Console.WriteLine("Seeded reviewer member.");
+                        Console.WriteLine("Seeded tp_nhatrang as reviewer member.");
                     }
                     else
                     {
-                        Console.WriteLine("User or council not found. Cannot seed member reviewer.");
+                        Console.WriteLine("tp_nhatrang already seeded as reviewer.");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Reviewer members already exist. Skip");
+                    Console.WriteLine("Reviewer member not found or no council.");
                 }
 
-                // Seed RevewAssignment
+                // Seed ReviewAssignment
                 if (!context.ReviewAssignment.Any())
                 {
-                    var reviewer = context.Reviewer.FirstOrDefault(r => !r.IsChair);
+                    var reviewer = context.Reviewer.FirstOrDefault(r => !r.IsChair); // lấy thành viên
                     var unit = context.Unit.FirstOrDefault(u => u.Id == 2);
                     var sub = context.SubCriteria.FirstOrDefault(s => s.Id == 5);
 
@@ -364,7 +360,6 @@ namespace chuyendoiso.Models
                             UnitId = unit.Id,
                             SubCriteriaId = sub.Id
                         });
-
                         context.SaveChanges();
                         Console.WriteLine("Seeded ReviewAssignment.");
                     }
