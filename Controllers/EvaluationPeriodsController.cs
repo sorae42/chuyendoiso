@@ -177,6 +177,17 @@ namespace chuyendoiso.Controllers
                         EvaluationPeriodId = period.Id,
                         UnitId = unitId
                     });
+
+                    var users = await _context.Auth.Where(u => u.UnitId == unitId).ToListAsync();
+                    foreach (var user in users)
+                    {
+                        await _logService.WriteLogAsync(
+                            "Create Evaluation Period",
+                            $"Đơn vị của bạn đã được thêm vào kỳ đánh giá {period.Name}",
+                            User.FindFirst(ClaimTypes.Name)?.Value,
+                            relatedUserId: user.Id
+                        );
+                    }
                 }
                 await _context.SaveChangesAsync();
             }
@@ -208,7 +219,11 @@ namespace chuyendoiso.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            await _logService.WriteLogAsync("Create", $"Tạo kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Create Evaluation Period", 
+                $"Tạo kỳ đánh giá: {period.Name} (ID = {period.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new
             {
@@ -257,7 +272,19 @@ namespace chuyendoiso.Controllers
                         EvaluationPeriodId = id,
                         UnitId = unitId
                     });
+
+                    var users = await _context.Auth.Where(u => u.UnitId == unitId).ToListAsync();
+                    foreach (var user in users)
+                    {
+                        await _logService.WriteLogAsync(
+                            "Update Evaluation Period",
+                            $"Đơn vị của bạn đã được cập nhật trong kỳ đánh giá '{existing.Name}'.",
+                            User.Identity?.Name,
+                            relatedUserId: user.Id
+                        );
+                    }
                 }
+
                 await _context.SaveChangesAsync();
             }
 
@@ -301,7 +328,11 @@ namespace chuyendoiso.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            await _logService.WriteLogAsync("Update", $"Cập nhật kỳ đánh giá: {existing.Name} (ID = {existing.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Update Evaluation Period", 
+                $"Cập nhật kỳ đánh giá: {existing.Name} (ID = {existing.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Cập nhật kỳ đánh giá thành công!" });
         }
@@ -327,10 +358,34 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Không thể xóa kỳ đánh giá này vì có dữ liệu phát sinh!" });
             }
 
+            var unitIds = await _context.EvaluationUnit
+                .Where(eu => eu.EvaluationPeriodId == id)
+                .Select(eu => eu.UnitId)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var unitId in unitIds)
+            {
+                var users = await _context.Auth.Where(u => u.UnitId == unitId).ToListAsync();
+                foreach (var user in users)
+                {
+                    await _logService.WriteLogAsync(
+                        "Evaluation Period Deleted",
+                        $"Kỳ đánh giá '{period.Name}' mà đơn vị bạn tham gia đã bị xóa.",
+                        User.Identity?.Name,
+                        relatedUserId: user.Id
+                    );
+                }
+            }
+
             _context.EvaluationPeriod.Remove(period);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete", $"Xóa kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Delete Evaluation Period", 
+                $"Xóa kỳ đánh giá: {period.Name} (ID = {period.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa kỳ đánh giá thành công!" });
         }
@@ -375,7 +430,11 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Lock", $"Khóa kỳ đánh giá: {period.Name} (ID = {period.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Lock Evaluation Period", 
+                $"Khóa kỳ đánh giá: {period.Name} (ID = {period.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Khóa kỳ đánh giá thành công!" });
         }
@@ -399,8 +458,11 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Unlock", $"Mở khóa kỳ đánh giá: {period.Name} (ID = {period.Id}) - Lý do: {dto.Reason ?? "(không có)"}",
-                User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Unlock Evaluation Period", 
+                $"Mở khóa kỳ đánh giá: {period.Name} (ID = {period.Id}) - Lý do: {dto.Reason ?? "(không có)"}",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Mở khóa kỳ đánh giá thành công!" });
         }

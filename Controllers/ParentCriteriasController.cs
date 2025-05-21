@@ -134,9 +134,10 @@ namespace chuyendoiso.Controllers
                 _context.ParentCriteria.Add(parent);
                 await _context.SaveChangesAsync();
 
-                await _logService.WriteLogAsync("Create",
+                await _logService.WriteLogAsync("Create Parent Criteria",
                     $"Tạo tiêu chí cha: {parent.Name} (ID = {parent.Id})",
-                    User.FindFirst(ClaimTypes.Name)?.Value);
+                    User.FindFirst(ClaimTypes.Name)?.Value
+                );
 
                 return CreatedAtAction(nameof(Details), new { id = parent.Id }, new
                 {
@@ -208,7 +209,11 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Update", $"Cập nhật tiêu chí cha: {existing.Name} (ID = {existing.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Update Parent Criteria", 
+                $"Cập nhật tiêu chí cha: {existing.Name} (ID = {existing.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Cập nhật thành công!" });
         }
@@ -238,7 +243,11 @@ namespace chuyendoiso.Controllers
             _context.ParentCriteria.Remove(parentCriteria);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete", $"Xóa tiêu chí cha: {parentCriteria.Name} (ID = {parentCriteria.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Delete Parent Criteria", 
+                $"Xóa tiêu chí cha: {parentCriteria.Name} (ID = {parentCriteria.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa tiêu chí cha thành công!" });
         }

@@ -138,7 +138,11 @@ namespace chuyendoiso.Controllers
             };
             _context.Auth.Add(user);
             await _context.SaveChangesAsync();
-            await _logService.WriteLogAsync("Create", $"Tạo người dùng mới: {user.Username} (ID = {user.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Create User", 
+                $"Tạo người dùng mới: {user.Username} (ID = {user.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return CreatedAtAction(nameof(Details), new { id = user.Id }, new 
             {
@@ -190,7 +194,11 @@ namespace chuyendoiso.Controllers
             {
                 _context.Update(existingUser);
                 await _context.SaveChangesAsync();
-                await _logService.WriteLogAsync("Update", $"Cập nhật người dùng: {existingUser.Username} (ID = {existingUser.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+                await _logService.WriteLogAsync(
+                    "Update User", 
+                    $"Cập nhật người dùng: {existingUser.Username} (ID = {existingUser.Id})", 
+                    User.FindFirst(ClaimTypes.Name)?.Value
+                );
 
                 return Ok(new
                 {
@@ -221,7 +229,11 @@ namespace chuyendoiso.Controllers
 
             _context.Auth.Remove(user);
             await _context.SaveChangesAsync();
-            await _logService.WriteLogAsync("Delete", $"Xóa người dùng: {user.Username} (ID = {user.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Delete User", 
+                $"Xóa người dùng: {user.Username} (ID = {user.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa người dùng thành công!" });
         }
@@ -260,7 +272,11 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Update Profile", $"Cập nhật thông tin người dùng: {user.Username} (ID = {user.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Update Profile", 
+                $"Cập nhật thông tin người dùng: {user.Username} (ID = {user.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Cập nhật thông tin thành công!" });
         }

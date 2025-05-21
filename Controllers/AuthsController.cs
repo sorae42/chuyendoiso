@@ -60,6 +60,13 @@ namespace chuyendoiso.Controllers
             }
 
             var jwt = GenerateJwtToken(user);
+
+            await _logService.WriteLogAsync(
+                "Login", 
+                $"Tài khoản {username} đăng nhập", 
+                username
+            );
+
             return Ok(new { message = "Đăng nhập thành công", token = jwt, trustedToken = user.TrustedDeviceToken });
         }
 

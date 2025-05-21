@@ -5,6 +5,7 @@ using chuyendoiso.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace chuyendoiso.Controllers
 {
@@ -119,7 +120,11 @@ namespace chuyendoiso.Controllers
             _context.ReviewResult.Add(result);
             await _context.SaveChangesAsync();
 
-            await _log.WriteLogAsync("Submit Review Result", $"Thành viên {User.Identity?.Name} đã nộp kết quả thẩm định nhiệm vụ {dto.ReviewAssignmentId}", User.Identity?.Name);
+            await _log.WriteLogAsync(
+                "Submit Review Result",
+                $"Thành viên {User.Identity?.Name} đã nộp kết quả thẩm định nhiệm vụ {dto.ReviewAssignmentId}", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Nộp kết quả thẩm định thành công!" });
         }

@@ -107,7 +107,11 @@ namespace chuyendoiso.Controllers
             _context.FinalReviewResult.Add(result);
             await _context.SaveChangesAsync();
 
-            await _log.WriteLogAsync("Submit Final Review", $"Chủ tịch hội đồng duyệt điểm thẩm định: {assignment.Id}", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _log.WriteLogAsync(
+                "Submit Final Review", 
+                $"Chủ tịch hội đồng duyệt điểm thẩm định: {assignment.Id}", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Duyệt điểm thẩm định thành công!" });
         }

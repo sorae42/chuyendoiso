@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using chuyendoiso.Data;
@@ -11,9 +12,11 @@ using chuyendoiso.Data;
 namespace chuyendoiso.Migrations
 {
     [DbContext(typeof(chuyendoisoContext))]
-    partial class chuyendoisoContextModelSnapshot : ModelSnapshot
+    [Migration("20250519070423_AddUserActionLog")]
+    partial class AddUserActionLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,11 +45,11 @@ namespace chuyendoiso.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("RelatedUserId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -54,7 +57,7 @@ namespace chuyendoiso.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RelatedUserId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("ActionLogs");
                 });
@@ -436,11 +439,11 @@ namespace chuyendoiso.Migrations
 
             modelBuilder.Entity("chuyendoiso.Models.ActionLog", b =>
                 {
-                    b.HasOne("chuyendoiso.Models.Auth", "RelatedUser")
+                    b.HasOne("chuyendoiso.Models.Auth", "User")
                         .WithMany()
-                        .HasForeignKey("RelatedUserId");
+                        .HasForeignKey("UserId");
 
-                    b.Navigation("RelatedUser");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("chuyendoiso.Models.Auth", b =>

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DocumentFormat.OpenXml.Presentation;
+using System.ComponentModel.DataAnnotations;
 
 namespace chuyendoiso.Models
 {
@@ -11,5 +12,7 @@ namespace chuyendoiso.Models
         public DateTime Timestamp { get; set; }
         public string Action { get; set; }
         public string Description { get; set; }
+        public int? RelatedUserId { get; set; }
+        public Auth? RelatedUser { get; set; }
     }
 }

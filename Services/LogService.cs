@@ -15,7 +15,7 @@ namespace chuyendoiso.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task WriteLogAsync(string action, string description, string? username = null)
+        public async Task WriteLogAsync(string action, string description, string? username = null, int? relatedUserId = null)
         {
             var actualUsername = username ?? _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Anonymous";
             var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown";
@@ -23,6 +23,7 @@ namespace chuyendoiso.Services
             var log = new ActionLog
             {
                 Username = username,
+                RelatedUserId = relatedUserId,
                 IPAddress = ipAddress,
                 Timestamp = DateTime.UtcNow,
                 Action = action,

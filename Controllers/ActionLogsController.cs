@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace chuyendoiso.Controllers
 {
@@ -69,6 +70,28 @@ namespace chuyendoiso.Controllers
                 log.Action,
                 log.Description
             });
+        }
+
+        // GET: api/actionlogs/notifications
+        [HttpGet("notifications")]
+        [Authorize]
+        public async Task<IActionResult> GetNotifications()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+            var notifications = await _context.ActionLogs
+                .Where(log => log.RelatedUserId == userId)
+                .OrderByDescending(log => log.Timestamp)
+                .Select(log => new
+                {
+                    log.Id,
+                    log.Timestamp,
+                    log.Action,
+                    log.Description
+                })
+                .ToListAsync();
+
+            return Ok(notifications);
         }
     }
 }

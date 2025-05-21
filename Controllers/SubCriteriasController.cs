@@ -110,7 +110,11 @@ namespace chuyendoiso.Controllers
             _context.SubCriteria.Add(subCriteria);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Create", $"Tạo tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id}) thuộc chỉ tiêu cha: {parent.Name} ({parent.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Create Sub Criteria", 
+                $"Tạo tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id}) thuộc chỉ tiêu cha: {parent.Name} ({parent.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return CreatedAtAction(nameof(Details), new { id = subCriteria.Id }, new
             {
@@ -190,7 +194,10 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Update", $"Cập nhật tiêu chí con: {existing.Name} (ID = {existing.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Update Sub Criteria", 
+                $"Cập nhật tiêu chí con: {existing.Name} (ID = {existing.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value);
 
             return Ok(new { message = "Cập nhật thành công!" });
         }
@@ -214,7 +221,11 @@ namespace chuyendoiso.Controllers
             _context.SubCriteria.Remove(subCriteria);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete", $"Xóa tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Delete Sub Criteria", 
+                $"Xóa tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa nhóm chỉ tiêu thành công!" });
         }

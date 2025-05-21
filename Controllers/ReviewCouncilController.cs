@@ -4,8 +4,10 @@ using chuyendoiso.Models;
 using chuyendoiso.Services;
 using DocumentFormat.OpenXml.Office2010.Excel;
 using DocumentFormat.OpenXml.Spreadsheet;
+using Humanizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using NuGet.Versioning;
 using System.Security.Claims;
@@ -159,7 +161,18 @@ namespace chuyendoiso.Controllers
             _context.Reviewer.Add(chair);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Create Council", $"Tạo hội đồng '{council.Name}', chủ tịch {chairUser.Username}", User.Identity?.Name);
+            await _logService.WriteLogAsync(
+                "Create Council",
+                $"Bạn đã được phân công làm Chủ tịch hội đồng {council.Name}",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                relatedUserId: chairUser.Id
+            );
+
+            await _logService.WriteLogAsync(
+                "Create Council",
+                $"Tạo hội đồng {council.Name}, chủ tịch {chairUser.Username}",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new
             {
@@ -195,7 +208,19 @@ namespace chuyendoiso.Controllers
             _context.Reviewer.Add(reviewer);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Add Reviewer", $"Thêm đơn vị đánh giá: {user.Username} vào hội đồng {council.Name}", User.FindFirst(ClaimTypes.Name)?.Value);
+
+            await _logService.WriteLogAsync(
+                "Add Reviewer",
+                $"{user.Username} được thêm vào hội đồng {council.Name}",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                user.UnitId
+            );
+
+            await _logService.WriteLogAsync(
+                "Add Reviewer",
+                $"Thêm đơn vị đánh giá: {user.Username} vào hội đồng {council.Name}",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new 
             { 
@@ -220,40 +245,57 @@ namespace chuyendoiso.Controllers
                 .Include(r => r.Auth)
                 .FirstOrDefaultAsync(r => r.Id == dto.ReviewerId);
 
-            var unit = await _context.Unit.FindAsync(dto.UnitId);
-            var sub = dto.SubCriteriaId.HasValue
-                    ? await _context.SubCriteria.FindAsync(dto.SubCriteriaId.Value)
-                    : null;
+            if (reviewer == null)
+                return BadRequest(new { message = "Không tìm thấy người thẩm định!" });
 
-            if (reviewer == null || unit == null)
-                return BadRequest(new { message = "Không tìm thấy đơn vị!" });
-
-            var assignment = new ReviewAssignment
+            foreach (var assignment in dto.Assignments)
             {
-                ReviewerId = dto.ReviewerId,
-                UnitId = dto.UnitId,
-                SubCriteriaId = dto.SubCriteriaId
-            };
+                var unit = await _context.Unit.FindAsync(assignment.UnitId);
 
-            _context.ReviewAssignment.Add(assignment);
+                if (unit == null)
+                    return BadRequest(new { message = "Không tìm thấy đơn vị!" });
+
+                foreach (var subId in assignment.SubCriteriaIds.Distinct())
+                {
+                    var sub = await _context.SubCriteria.FindAsync(subId);
+
+                    if (sub == null)
+                        return BadRequest(new { message = "Không tìm thấy tiêu chí con!" });
+
+                    bool exists = await _context.ReviewAssignment.AnyAsync(ra =>
+                        ra.ReviewerId == dto.ReviewerId &&
+                        ra.UnitId == assignment.UnitId &&
+                        ra.SubCriteriaId == subId);
+
+                    if (!exists)
+                    {
+                        var reviewAssignment = new ReviewAssignment
+                        {
+                            ReviewerId = dto.ReviewerId,
+                            UnitId = assignment.UnitId,
+                            SubCriteriaId = subId
+                        };
+                        _context.ReviewAssignment.Add(reviewAssignment);
+                    }
+                }
+
+                await _logService.WriteLogAsync(
+                    "Assign Reviewer",
+                    $"Bạn được phân công thẩm định đơn vị '{unit.Name}' với các tiêu chí con.",
+                    User.FindFirst(ClaimTypes.Name)?.Value,
+                    relatedUserId: reviewer.AuthId
+                );
+            }
+
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Assign", $"Phân công thẩm định: {reviewer.Auth.Username} cho đơn vị {unit.Name}", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Assign Reviewer",
+                $"Phân công thẩm định: {reviewer.Auth.Username}",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
-            return Ok(new 
-            { 
-                message = "Phân công thẩm định thành công!", 
-                data = new
-                {
-                    assignment.Id,
-                    dto.ReviewerId,
-                    Name = reviewer.Auth.Username,
-                    dto.UnitId,
-                    UnitName = unit.Name,
-                    dto.SubCriteriaId,
-                    SubCriteriaName = sub != null ? sub.Name : null
-                }
-            });
+            return Ok(new { message = "Phân công thẩm định thành công!" });
         }
 
         // PUT: api/reviewcouncil/{id}
@@ -303,7 +345,40 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Update", $"Cập nhật hội đồng: {council.Name} (ID = {council.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            if (dto.ChairAuthId.HasValue)
+            {
+                var newChair = await _context.Auth.FindAsync(dto.ChairAuthId.Value);
+                if (newChair != null)
+                {
+                    await _logService.WriteLogAsync(
+                        "Update Chair",
+                        $"Cập nhật chủ tịch hội đồng: {council.Name} thành {newChair.Username}",
+                        User.FindFirst(ClaimTypes.Name)?.Value,
+                        relatedUserId: newChair.Id
+                    );
+                }
+            }
+
+            var memberIds = council.Reviewers
+                .Where(r => !dto.ChairAuthId.HasValue || r.AuthId != dto.ChairAuthId.Value)
+                .Select(r => r.AuthId)
+                .Distinct()
+                .ToList();
+
+            foreach (var memberId in memberIds)
+            {
+                await _logService.WriteLogAsync(
+                    "Update Council",
+                    $"Hội đồng '{council.Name}' đã được cập nhật. Vui lòng kiểm tra thông tin mới.",
+                    User.FindFirst(ClaimTypes.Name)?.Value,
+                    relatedUserId: memberId
+                );
+            }
+
+            await _logService.WriteLogAsync("Update Council",
+                $"Cập nhật hội đồng: {council.Name} (ID = {council.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new 
             { 
@@ -326,6 +401,7 @@ namespace chuyendoiso.Controllers
         {
             var existing = await _context.Reviewer
                 .Include(r => r.ReviewAssignments)
+                .Include(r => r.ReviewCouncil)
                 .FirstOrDefaultAsync(r => r.Id == id );
 
             if (existing == null)
@@ -339,7 +415,18 @@ namespace chuyendoiso.Controllers
             _context.Reviewer.Remove(existing);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete Reviewer", $"Xóa thành viên hội đồng: {existing.Auth.Username}", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Delete Reviewer",
+                $"Bạn đã bị xóa khỏi hội đồng {existing.ReviewCouncil.Name}",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                relatedUserId: existing.AuthId
+            );
+
+            await _logService.WriteLogAsync(
+                "Delete Reviewer", 
+                $"Xóa thành viên hội đồng: {existing.Auth.Username}", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa thành viên hội đồng thành công!" });
         }
@@ -365,6 +452,16 @@ namespace chuyendoiso.Controllers
             if (anyAssignments)
                 return BadRequest(new { message = "Không thể xóa hội đồng đã có thành viên được phân công thẩm định!" });
 
+            foreach (var reviewer in council.Reviewers)
+            {
+                await _logService.WriteLogAsync(
+                    "Delete Council",
+                    $"Hội đồng {council.Name} mà bạn tham gia đã bị xóa.",
+                    User.FindFirst(ClaimTypes.Name)?.Value,
+                    relatedUserId: reviewer.AuthId
+                );
+            }
+
             // Xóa tất cả thành viên hội đồng
             _context.Reviewer.RemoveRange(council.Reviewers);
 
@@ -372,7 +469,11 @@ namespace chuyendoiso.Controllers
             _context.ReviewCouncil.Remove(council);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete Council", $"Xóa hội đồng '{council.Name}'", User.Identity?.Name);
+            await _logService.WriteLogAsync(
+                "Delete Council", 
+                $"Xóa hội đồng '{council.Name}'", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa hội đồng thành công!" });
         }

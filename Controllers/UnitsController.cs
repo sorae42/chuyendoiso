@@ -141,7 +141,11 @@ namespace chuyendoiso.Controllers
             _context.Unit.Add(unit);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Create", $"Tạo đơn vị: {unit.Name} (ID = {unit.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Create Unit", 
+                $"Tạo đơn vị: {unit.Name} (ID = {unit.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return CreatedAtAction(nameof(Index), new { id = unit.Id }, unit);
         }
@@ -187,7 +191,11 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Update", $"Cập nhật đơn vị: {existingUnit.Name} (ID = {existingUnit.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Update Unit", 
+                $"Cập nhật đơn vị: {existingUnit.Name} (ID = {existingUnit.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new
             {
@@ -217,7 +225,11 @@ namespace chuyendoiso.Controllers
             _context.Unit.Remove(unit);
             await _context.SaveChangesAsync();
 
-            await _logService.WriteLogAsync("Delete", $"Xóa đơn vị: {unit.Name} (ID = {unit.Id})", User.FindFirst(ClaimTypes.Name)?.Value);
+            await _logService.WriteLogAsync(
+                "Delete Unit",
+                $"Xóa đơn vị: {unit.Name} (ID = {unit.Id})", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Xóa đơn vị thành công!" });
         }
