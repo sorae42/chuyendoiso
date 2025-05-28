@@ -72,8 +72,8 @@ namespace chuyendoiso.Controllers
             });
         }
 
-        // GET: api/actionlogs/notifications
-        [HttpGet("notifications")]
+        // GET: api/actionlogs/notifications/me
+        [HttpGet("notifications/me")]
         [Authorize]
         public async Task<IActionResult> GetNotifications()
         {
