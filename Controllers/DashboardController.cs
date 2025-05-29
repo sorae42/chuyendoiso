@@ -53,30 +53,39 @@ namespace chuyendoiso.Controllers
         {
             var now = DateTime.UtcNow;
 
-            var currentPeriod = await _context.EvaluationPeriod
+            var currentPeriods = await _context.EvaluationPeriod
+                .Where(p => p.StartDate <= now && p.EndDate >= now)
                 .OrderByDescending(p => p.StartDate)
-                .FirstOrDefaultAsync(p => p.StartDate <= now && p.EndDate >= now);
+                .ToListAsync();
 
-            if (currentPeriod == null)
+            if (!currentPeriods.Any())
                 return Ok(new { message = "Không có kỳ đánh giá hiện tại" });
 
             var totalUnits = await _context.Unit.CountAsync();
-            var completedUnits = await _context.EvaluationUnit
-                .Where(e => e.EvaluationPeriodId == currentPeriod.Id)
+
+            var result = new List<object>();
+
+            foreach ( var period in currentPeriods)
+            {
+                var completedUnits = await _context.EvaluationUnit
+                .Where(e => e.EvaluationPeriodId == period.Id)
                 .Select(e => e.UnitId)
                 .Distinct()
                 .CountAsync();
 
-            var progressPercent = totalUnits == 0 ? 0 : Math.Round((double)completedUnits / totalUnits * 100, 2);
+                var progressPercent = totalUnits == 0 ? 0 : Math.Round((double)completedUnits / totalUnits * 100, 2);
 
-            return Ok(new
-            {
-                currentPeriod.Id,
-                currentPeriod.Name,
-                totalUnits,
-                completedUnits,
-                progressPercent
-            });
+                result.Add(new
+                {
+                    period.Id,
+                    period.Name,
+                    totalUnits,
+                    completedUnits,
+                    progressPercent
+                });
+            }
+
+            return Ok(result);
         }
 
         // Summary: Thống kê top đơn vị theo điểm số
