@@ -248,19 +248,35 @@ namespace chuyendoiso.Controllers
             if (reviewer == null)
                 return BadRequest(new { message = "Không tìm thấy người thẩm định!" });
 
+            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+
             foreach (var assignment in dto.Assignments)
             {
                 var unit = await _context.Unit.FindAsync(assignment.UnitId);
-
                 if (unit == null)
                     return BadRequest(new { message = "Không tìm thấy đơn vị!" });
+
+                if (currentUserRole == "chair" && reviewer.Auth?.UnitId == unit.Id)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"Chủ tịch không thể chỉ định reviewer '{reviewer.Auth?.Username}' thẩm định chính đơn vị của họ ({unit.Name})."
+                    });
+                }
 
                 foreach (var subId in assignment.SubCriteriaIds.Distinct())
                 {
                     var sub = await _context.SubCriteria.FindAsync(subId);
-
                     if (sub == null)
                         return BadRequest(new { message = "Không tìm thấy tiêu chí con!" });
+
+                    if (sub.UnitEvaluate != unit.Name)
+                    {
+                        return BadRequest(new
+                        {
+                            message = $"Tiêu chí '{sub.Name}' không thuộc đơn vị '{unit.Name}', không thể phân công!"
+                        });
+                    }
 
                     bool exists = await _context.ReviewAssignment.AnyAsync(ra =>
                         ra.ReviewerId == dto.ReviewerId &&
@@ -287,13 +303,13 @@ namespace chuyendoiso.Controllers
                 );
             }
 
-            await _context.SaveChangesAsync();
-
             await _logService.WriteLogAsync(
                 "Assign Reviewer",
-                $"Phân công thẩm định: {reviewer.Auth.Username}",
+                $"Phân công thẩm định: {reviewer.Auth?.Username}",
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
+
+            await _context.SaveChangesAsync();
 
             return Ok(new { message = "Phân công thẩm định thành công!" });
         }
