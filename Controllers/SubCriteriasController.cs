@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using chuyendoiso.DTOs;
 using System.Security.Claims;
 using chuyendoiso.Services;
+using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace chuyendoiso.Controllers
 {
@@ -27,16 +28,40 @@ namespace chuyendoiso.Controllers
         [Authorize]
         public async Task<IActionResult> Index()
         {
-            var subCriterias = await _context.SubCriteria
-                .Include(p => p.ParentCriteria)
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Không xác định được người dùng!" });
+
+            var user = await _context.Auth
+                .Include(u => u.Unit)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null || user.Unit == null)
+                return BadRequest(new { message = "Người dùng chưa được gán đơn vị!" });
+
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            var query = _context.SubCriteria
+                .Include(sc => sc.ParentCriteria)
+                .AsQueryable();
+
+            if (role != "admin")
+            {
+                // Chỉ lấy SubCriteria của đơn vị hiện tại (so sánh theo Unit.Name)
+                query = query.Where(sc => sc.UnitEvaluate == user.Unit.Name);
+            }
+
+            var subCriterias = await query
                 .Select(p => new
                 {
                     p.Id,
                     p.Name,
                     p.MaxScore,
-                    p.EvidenceInfo
+                    p.EvidenceInfo,
+                    p.UnitEvaluate
                 })
                 .ToListAsync();
+
             return Ok(subCriterias);
         }
 
@@ -92,7 +117,13 @@ namespace chuyendoiso.Controllers
             if (parent == null)
                 return BadRequest(new { message = "Không tìm thấy chỉ tiêu cha!" });
 
-            var unit = User.FindFirst("Unit")?.Value ?? "Không rõ đơn vị";
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Không xác định được người dùng!" });
+
+            var user = await _context.Auth.Include(u => u.Unit).FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null || user.Unit == null)
+                return BadRequest(new { message = "Không xác định được đơn vị của người dùng!" });
 
             var subCriteria = new SubCriteria
             {
@@ -101,7 +132,7 @@ namespace chuyendoiso.Controllers
                 Description = dto.Description,
                 EvidenceInfo = dto.EvidenceInfo,
                 ParentCriteriaId = parent.Id,
-                UnitEvaluate = unit,
+                UnitEvaluate = user.Unit.Name,
                 EvaluatedAt = dto.EvaluatedAt.HasValue
                     ? DateTime.SpecifyKind(dto.EvaluatedAt.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow

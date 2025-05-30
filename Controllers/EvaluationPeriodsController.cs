@@ -2,6 +2,7 @@
 using chuyendoiso.DTOs;
 using chuyendoiso.Models;
 using chuyendoiso.Services;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,9 +31,18 @@ namespace chuyendoiso.Controllers
             page = page < 1 ? 1 : page;
             pageSize = pageSize < 1 ? 10 : pageSize;
 
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Không xác định được người dùng!" });
+
+            var user = await _context.Auth.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null || user.UnitId == null)
+                return BadRequest(new { message = "Người dùng chưa được gán đơn vị!" });
+
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
             var query = _context.EvaluationPeriod
                 .Include(p => p.EvaluationUnits)
-                .ThenInclude(eu => eu.Unit)
+                    .ThenInclude(eu => eu.Unit)
                 .AsQueryable();
 
             // Filter by year if provided
@@ -41,8 +51,14 @@ namespace chuyendoiso.Controllers
                 query = query.Where(p => p.StartDate.Year == year.Value);
             }
 
+            if (role != "admin")
+            {
+                query = query.Where(p => p.EvaluationUnits.Any(eu => eu.UnitId == user.UnitId));
+            }
+
             // Pagination
             var totalCount = await query.CountAsync();
+
             var periods = await query
                 .OrderByDescending(p => p.StartDate)
                 .Skip((page - 1) * pageSize)
