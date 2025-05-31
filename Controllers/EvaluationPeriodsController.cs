@@ -40,6 +40,7 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Người dùng chưa được gán đơn vị!" });
 
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
             var query = _context.EvaluationPeriod
                 .Include(p => p.EvaluationUnits)
                     .ThenInclude(eu => eu.Unit)
@@ -53,6 +54,9 @@ namespace chuyendoiso.Controllers
 
             if (role != "admin")
             {
+                if (user.UnitId == null)
+                    return BadRequest(new { message = "Người dùng chưa được gán đơn vị!" });
+
                 query = query.Where(p => p.EvaluationUnits.Any(eu => eu.UnitId == user.UnitId));
             }
 
