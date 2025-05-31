@@ -36,7 +36,7 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Không xác định được người dùng!" });
 
             var user = await _context.Auth.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null || user.UnitId == null)
+            if (user == null)
                 return BadRequest(new { message = "Người dùng chưa được gán đơn vị!" });
 
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
