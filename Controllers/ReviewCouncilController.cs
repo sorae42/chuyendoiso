@@ -61,7 +61,7 @@ namespace chuyendoiso.Controllers
                     c.CreatedAt,
                     Chair = c.Reviewers
                         .Where(r => r.IsChair)
-                        .Select(r => new { r.Auth.FullName, r.Auth.Username })
+                        .Select(r => new { r.Auth.Id, r.Auth.FullName, r.Auth.Username })
                         .FirstOrDefault(),
                     MemberCount = c.Reviewers.Count
                 })
