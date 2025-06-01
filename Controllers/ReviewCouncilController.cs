@@ -34,9 +34,24 @@ namespace chuyendoiso.Controllers
         [Authorize]
         public async Task<IActionResult> Index()
         {
-            var councils = await _context.ReviewCouncil
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId))
+                return BadRequest(new { message = "Không xác định được người dùng!" });
+
+            var query = _context.ReviewCouncil
                 .Include(c => c.Reviewers)
-                .ThenInclude(r => r.Auth)
+                    .ThenInclude(r => r.Auth)
+                .AsQueryable();
+
+            if (role != "admin")
+            {
+                // Lấy hội đồng mà người dùng là thành viên hoặc chủ tịch
+                query = query.Where(c => c.Reviewers.Any(r => r.AuthId == userId));
+            }
+
+            var councils = await _context.ReviewCouncil
                 .OrderByDescending(c => c.CreatedAt)
                 .Select(c => new
                 {
