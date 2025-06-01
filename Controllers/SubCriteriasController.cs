@@ -96,6 +96,31 @@ namespace chuyendoiso.Controllers
             return Ok(subCriteria);
         }
 
+        // GET: api/subcriterias/by-unit?unitId=5
+        [HttpGet("by-unit")]
+        [Authorize]
+        public async Task<IActionResult> GetByUnit([FromQuery] int unitId)
+        {
+            var unit = await _context.Unit.FindAsync(unitId);
+            if (unit == null)
+                return BadRequest(new { message = "Không tìm thấy đơn vị!" });
+
+            var subCriterias = await _context.SubCriteria
+                .Where(sc => sc.UnitEvaluate == unit.Name)
+                .Select(sc => new
+                {
+                    sc.Id,
+                    sc.Name,
+                    sc.Description,
+                    sc.MaxScore,
+                    sc.UnitEvaluate,
+                    sc.ParentCriteriaId
+                })
+                .ToListAsync();
+
+            return Ok(subCriterias);
+        }
+
         // POST: api/subcriterias/create
         // Params: Name, MaxScore, Description, ParentCriteriaId, EvidenceInfo
         [HttpPost("create")]
@@ -161,7 +186,7 @@ namespace chuyendoiso.Controllers
         // PUT: api/subcriterias/id
         // Params: Id, Name, MaxScore, Description, ParentCriteriaId, EvidenceInfo
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Edit(int id, [FromBody] SubCriteriaDto dto)
         {
             var existing = await _context.SubCriteria
@@ -182,11 +207,6 @@ namespace chuyendoiso.Controllers
                 {
                     return BadRequest(new { message = "Không thể chỉnh sửa vì kỳ đánh giá đã bị khóa!" });
                 }
-            }
-
-            if (role != "admin" && existing.UnitEvaluate != unit)
-            {
-                return StatusCode(403, new { message = "Bạn không có quyền chỉnh sửa tiêu chí của đơn vị khác." });
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != existing.Name)
@@ -260,57 +280,5 @@ namespace chuyendoiso.Controllers
 
             return Ok(new { message = "Xóa nhóm chỉ tiêu thành công!" });
         }
-
-        //// GET: api/subcriterias/by-year?year={year}
-        //[HttpGet("by-year")]
-        //[Authorize]
-        //public async Task<IActionResult> GetByYear([FromQuery] int? year)
-        //{
-        //    int targetYear = year ?? DateTime.Now.Year;
-
-        //    var role = User.FindFirst("Role")?.Value;
-        //    var unit = User.FindFirst("Unit")?.Value;
-
-        //    var query = _context.SubCriteria
-        //        .Include(p => p.ParentCriteria)
-        //        .Where(p => p.EvaluatedAt != null && p.EvaluatedAt.Value.Year == targetYear);
-
-        //    if (role != "admin")
-        //    {
-        //        query = query.Where(p => p.UnitEvaluate == unit);
-        //    }
-
-        //    if (role == "admin")
-        //    {
-        //        results = await query
-        //            .Select(p => new
-        //            {
-        //                p.Id,
-        //                p.Name,
-        //                p.MaxScore,
-        //                p.EvidenceInfo,
-        //                p.EvaluatedAt,
-        //                p.UnitEvaluate,
-        //                Parent = new { p.ParentCriteria.Id, p.ParentCriteria.Name }
-        //            })
-        //            .ToListAsync<object>();
-        //    }
-        //    else
-        //    {
-        //        results = await query
-        //            .Select(p => new
-        //            {
-        //                p.Id,
-        //                p.Name,
-        //                p.MaxScore,
-        //                p.EvidenceInfo,
-        //                p.EvaluatedAt,
-        //                Parent = new { p.ParentCriteria.Id, p.ParentCriteria.Name }
-        //            })
-        //            .ToListAsync<object>();
-        //    }
-
-        //    return Ok(results);
-        //}
     }
 }

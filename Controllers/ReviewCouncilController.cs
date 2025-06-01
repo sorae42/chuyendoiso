@@ -251,7 +251,7 @@ namespace chuyendoiso.Controllers
 
         // POST: api/reviewcouncil/assign
         // Params: reviewerId, unitId, subCriteriaId
-        // Phân công thẩm định chỉ tiêu
+        // Phân công thẩm định đơn vị
         [HttpPost("assign")]
         [Authorize(Roles = "admin,chair")]
         public async Task<IActionResult> Assign([FromBody] ReviewAssignmentDto dto)
