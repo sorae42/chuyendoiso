@@ -168,8 +168,14 @@ namespace chuyendoiso.Controllers
                 return NotFound(new { message = "Không tìm thấy người dùng!" });
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Username))
+            if (!string.IsNullOrWhiteSpace(dto.Username) && dto.Username != existingUser.Username)
+            {
+                bool exists = await _context.Auth.AnyAsync(u => u.Username == dto.Username);
+                if (exists)
+                    return BadRequest(new { message = "Tên đăng nhập đã tồn tại!" });
+
                 existingUser.Username = dto.Username;
+            }
 
             if (!string.IsNullOrWhiteSpace(dto.FullName))
                 existingUser.FullName = dto.FullName;
@@ -190,6 +196,15 @@ namespace chuyendoiso.Controllers
                 existingUser.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
             }
 
+            if (!string.IsNullOrWhiteSpace(dto.Role))
+            {
+                if (dto.Role != "admin" && dto.Role != "user" && dto.Role != "chair")
+                {
+                    return BadRequest(new { message = "Vai trò không hợp lệ! Chỉ có thể là 'admin', 'user' hoặc 'chair'." });
+                }
+                existingUser.Role = dto.Role;
+            }
+
             try
             {
                 _context.Update(existingUser);
@@ -206,7 +221,8 @@ namespace chuyendoiso.Controllers
                     existingUser.Username,
                     existingUser.FullName,
                     existingUser.Email,
-                    existingUser.Phone
+                    existingUser.Phone,
+                    existingUser.Role
                 });
             }
             catch (DbUpdateConcurrencyException)
