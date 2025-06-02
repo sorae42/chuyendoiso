@@ -22,7 +22,7 @@ namespace chuyendoiso.Controllers
         // GET: api/subcriteriaassignments/my-assignments?periodId=1
         [HttpGet("my-assignments")]
         [Authorize]
-        public async Task<IActionResult> GetMyAssignments([FromBody] int periodId)
+        public async Task<IActionResult> GetMyAssignments([FromQuery] int periodId)
         {
             var unitName = User.FindFirst("Unit")?.Value;
             if (string.IsNullOrEmpty(unitName))
