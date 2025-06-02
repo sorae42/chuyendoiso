@@ -19,75 +19,110 @@ namespace chuyendoiso.Controllers
         }
 
         // Summary: Đơn vị xem tiêu chí được giao trong kỳ đánh giá
-        // GET: api/subcriteriaassignments/my-assignments?periodId=1
-        [HttpGet("my-assignments")]
+        // GET: api/subcriteriaassignments/my-evaluation-periods
+        [HttpGet("my-evaluation-periods")]
         [Authorize]
-        public async Task<IActionResult> GetMyAssignments([FromQuery] int periodId)
+        public async Task<IActionResult> GetMyEvaluationPeriods()
         {
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
-            var unitName = User.FindFirst("Unit")?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (role != "admin" && string.IsNullOrWhiteSpace(unitName))
-                return Unauthorized(new { message = "Không xác định được đơn vị!" });
+            if(!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { message = "Không xác định được người dùng!" });
 
-            var assignments = await _context.SubCriteriaAssignment
-                .Include(a => a.EvaluationPeriod)
-                .Include(a => a.Unit)
-                .Include(a => a.SubCriteria)
-                .Where(a => a.EvaluationPeriodId == periodId && (role == "admin" || a.Unit.Name == unitName))
-                .Select(a => new
+            // Xác định đơn vị hiện tại
+            int? unitId = null;
+            if (role != "admin")
+            {
+                var unitIdFromDb = await _context.Auth
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.UnitId)
+                    .FirstOrDefaultAsync();
+
+                if (unitIdFromDb == 0)
+                    return NotFound(new { message = "Không tìm thấy đơn vị!" });
+
+                unitId = unitIdFromDb;
+            }
+
+            var periods = await _context.EvaluationPeriod
+                .Include(p => p.ParentCriterias)
+                .ThenInclude(pc => pc.SubCriterias)
+                .Select(p => new
                 {
-                    a.Id,
-                    Subcriteria = new
-                    {
-                        a.SubCriteria.Id,
-                        a.SubCriteria.Name,
-                        a.SubCriteria.Description,
-                        a.SubCriteria.MaxScore,
-                        a.SubCriteria.EvidenceInfo
-                    },
-                    a.Score,
-                    a.Comment,
-                    a.EvidenceInfo,
-                    a.EvaluatedAt,
-                    PeriodName = a.EvaluationPeriod.Name,
-                    PeriodStart = a.EvaluationPeriod.StartDate,
-                    PeriodEnd = a.EvaluationPeriod.EndDate,
-                    UnitName = a.Unit.Name
+                    p.Id,
+                    p.Name,
+                    p.StartDate,
+                    p.EndDate,
+                    SubCriterias = p.ParentCriterias
+                .SelectMany(pc => pc.SubCriterias)
+                .Where(sc => role == "admin" || _context.SubCriteriaAssignment.Any(a => a.SubCriteriaId == sc.Id && a.UnitId == unitId))
+                .Select(sc => new
+                {
+                    sc.Id,
+                    sc.Name,
+                    sc.Description,
+                    sc.MaxScore,
+                    sc.EvidenceInfo,
+                    Assignment = _context.SubCriteriaAssignment
+                        .Where(a => a.SubCriteriaId == sc.Id && (role == "admin" || a.UnitId == unitId))
+                        .Select(a => new
+                        {
+                            a.Id,
+                            a.Score,
+                            a.Comment,
+                            a.EvidenceInfo,
+                            a.EvaluatedAt,
+                            UnitName = a.Unit.Name
+                        })
+                        .FirstOrDefault()
+                    })
                 })
+                .Where(p => p.SubCriterias.Any())
                 .ToListAsync();
 
-            return Ok(assignments);
+            return Ok(periods);
         }
 
-        // POST: api/submitcriteria/submit/{id}
-        [HttpPost("submit/{unitAssignmentId}")]
+        // POST: api/unitassignments/submit
+        // Submit mới điểm đánh giá cho tiêu chí trong kỳ của đơn vị
+        [HttpPost("submit")]
         [Authorize]
-        public async Task<IActionResult> Submit(int unitAssignmentId, [FromBody] SubmitCriteriaDto dto)
+        public async Task<IActionResult> Submit([FromBody] SubmitCriteriaDto dto)
         {
-            // Lấy thông tin người dùng hiện tại
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var unitName = User.FindFirst("Unit")?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(unitName))
-                return Unauthorized(new { message = "Không xác định được người dùng hoặc đơn vị!" });
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { message = "Không xác định được người dùng!" });
+
+            int? unitId = null;
+            if (role != "admin")
+            {
+                unitId = await _context.Auth
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.UnitId)
+                    .FirstOrDefaultAsync();
+
+                if (unitId == null || unitId == 0)
+                    return NotFound(new { message = "Không tìm thấy đơn vị!" });
+            }
 
             var assignment = await _context.SubCriteriaAssignment
                 .Include(a => a.EvaluationPeriod)
                 .Include(a => a.Unit)
                 .Include(a => a.SubCriteria)
-                .FirstOrDefaultAsync(a => a.Id == unitAssignmentId);
+                .FirstOrDefaultAsync(a =>
+                    a.SubCriteriaId == dto.SubCriteriaId &&
+                    a.EvaluationPeriodId == dto.PeriodId &&
+                    (role == "admin" || a.Unit.Id == unitId));
 
             if (assignment == null)
-                return NotFound(new { message = "Không tìm thấy nhiệm vụ đánh giá!" });
-
-            if (assignment.Unit.Name != unitName)
-                return Forbid("Bạn không có quyền nộp đánh giá cho tiêu chí này!");
+                return NotFound(new { message = "Không tìm thấy nhiệm vụ đánh giá phù hợp!" });
 
             if (assignment.EvaluationPeriod.IsLocked)
                 return BadRequest(new { message = "Kỳ đánh giá đã bị khóa!" });
 
-            // Cập nhật kết quả
             assignment.Score = dto.Score;
             assignment.Comment = dto.Comment;
             assignment.EvidenceInfo = dto.EvidenceInfo;
@@ -98,12 +133,61 @@ namespace chuyendoiso.Controllers
             return Ok(new
             {
                 message = "Nộp kết quả thành công!",
-                evaluatedAt = assignment.EvaluatedAt,
-                score = assignment.Score,
-                comment = assignment.Comment,
-                evidence = assignment.EvidenceInfo,
-                criteria = assignment.SubCriteria.Name,
-                period = assignment.EvaluationPeriod.Name
+                assignmentId = assignment.Id,
+                evaluatedAt = assignment.EvaluatedAt
+            });
+        }
+
+
+        // PUT: api/unitassignments/submit/{assignmentId}
+        // Chỉnh sửa kết quả đánh giá đã nộp
+        [HttpPut("submit/{assignmentId}")]
+        [Authorize]
+        public async Task<IActionResult> Edit(int assignmentId, [FromBody] SubmitCriteriaDto dto)
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { message = "Không xác định được người dùng!" });
+
+            int? unitId = null;
+            if (role != "admin")
+            {
+                unitId = await _context.Auth
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.UnitId)
+                    .FirstOrDefaultAsync();
+
+                if (unitId == null || unitId == 0)
+                    return NotFound(new { message = "Không tìm thấy đơn vị!" });
+            }
+
+            var assignment = await _context.SubCriteriaAssignment
+                .Include(a => a.EvaluationPeriod)
+                .Include(a => a.SubCriteria)
+                .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+            if (assignment == null)
+                return NotFound(new { message = "Không tìm thấy nhiệm vụ đánh giá!" });
+
+            if (assignment.EvaluationPeriod.IsLocked)
+                return BadRequest(new { message = "Kỳ đánh giá đã bị khóa!" });
+
+            if (role != "admin" && assignment.UnitId != unitId)
+                return Forbid("Bạn không có quyền chỉnh sửa đánh giá này!");
+
+            assignment.Score = dto.Score;
+            assignment.Comment = dto.Comment;
+            assignment.EvidenceInfo = dto.EvidenceInfo;
+            assignment.EvaluatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new 
+            { 
+                message = "Cập nhật thành công!", 
+                evaluatedAt = assignment.EvaluatedAt 
             });
         }
     }
