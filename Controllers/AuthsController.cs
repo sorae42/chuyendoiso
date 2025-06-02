@@ -9,6 +9,7 @@ using chuyendoiso.Interface;
 using chuyendoiso.Services;
 using chuyendoiso.Models;
 using chuyendoiso.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace chuyendoiso.Controllers
 {
@@ -35,7 +36,9 @@ namespace chuyendoiso.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> LoginAsync([FromForm] string password, [FromForm] string username, [FromForm] string? trustedToken = null)
         {
-            var user = _context.Auth.FirstOrDefault(x => x.Username == username);
+            var user = _context.Auth
+                .Include(u => u.Unit)
+                .FirstOrDefault(x => x.Username == username);
             if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
             {
                 return Unauthorized(new { message = "Tên đăng nhập hoặc mật khẩu không chính xác!" });

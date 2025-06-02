@@ -24,18 +24,17 @@ namespace chuyendoiso.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyAssignments([FromQuery] int periodId)
         {
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
             var unitName = User.FindFirst("Unit")?.Value;
-            if (string.IsNullOrEmpty(unitName))
-                return Unauthorized(new { message = "Không xác định được đơn vị!" });
 
-            var unit = await _context.Unit.FirstOrDefaultAsync(u => u.Name == unitName);
-            if (unit == null)
-                return NotFound(new { message = "Không tìm thấy đơn vị!" });
+            if (role != "admin" && string.IsNullOrWhiteSpace(unitName))
+                return Unauthorized(new { message = "Không xác định được đơn vị!" });
 
             var assignments = await _context.SubCriteriaAssignment
                 .Include(a => a.EvaluationPeriod)
+                .Include(a => a.Unit)
                 .Include(a => a.SubCriteria)
-                .Where(a => a.UnitId == unit.Id && a.EvaluationPeriodId == periodId)
+                .Where(a => a.EvaluationPeriodId == periodId && (role == "admin" || a.Unit.Name == unitName))
                 .Select(a => new
                 {
                     a.Id,
@@ -53,7 +52,8 @@ namespace chuyendoiso.Controllers
                     a.EvaluatedAt,
                     PeriodName = a.EvaluationPeriod.Name,
                     PeriodStart = a.EvaluationPeriod.StartDate,
-                    PeriodEnd = a.EvaluationPeriod.EndDate
+                    PeriodEnd = a.EvaluationPeriod.EndDate,
+                    UnitName = a.Unit.Name
                 })
                 .ToListAsync();
 
