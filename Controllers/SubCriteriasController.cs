@@ -26,43 +26,54 @@ namespace chuyendoiso.Controllers
         // GET: api/subcriterias
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
         {
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
                 return BadRequest(new { message = "Không xác định được người dùng!" });
-
-            var user = await _context.Auth
-                .Include(u => u.Unit)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (user == null || user.Unit == null)
-                return BadRequest(new { message = "Người dùng chưa được gán đơn vị!" });
-
-            var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
             var query = _context.SubCriteria
                 .Include(sc => sc.ParentCriteria)
                 .AsQueryable();
 
-            if (role != "admin")
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                // Chỉ lấy SubCriteria của đơn vị hiện tại (so sánh theo Unit.Name)
-                query = query.Where(sc => sc.UnitEvaluate == user.Unit.Name);
+                search = search.Trim().ToLower();
+                query = query.Where(sc => sc.Name.ToLower().Contains(search));
             }
 
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
             var subCriterias = await query
+                .OrderBy(sc => sc.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(p => new
                 {
                     p.Id,
                     p.Name,
                     p.MaxScore,
                     p.EvidenceInfo,
-                    p.UnitEvaluate
+                    Parent = p.ParentCriteria != null ? p.ParentCriteria.Name : null
                 })
                 .ToListAsync();
 
-            return Ok(subCriterias);
+            var result = new
+            {
+                Items = subCriterias,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                HasPreviousPage = page > 1,
+                HasNextPage = page < totalPages
+            };
+
+            return Ok(result);
         }
 
         // GET: api/subcriterias/id
