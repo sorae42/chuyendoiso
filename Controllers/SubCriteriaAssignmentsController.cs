@@ -60,7 +60,7 @@ namespace chuyendoiso.Controllers
             return Ok(assignments);
         }
 
-        // POST: api/submitcriteria/{id}
+        // POST: api/submitcriteria/submit/{id}
         [HttpPost("submit/{unitAssignmentId}")]
         [Authorize]
         public async Task<IActionResult> Submit(int unitAssignmentId, [FromBody] SubmitCriteriaDto dto)
