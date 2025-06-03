@@ -84,6 +84,128 @@ namespace chuyendoiso.Controllers
             return Ok(periods);
         }
 
+        // GET: api/subcriteriaassignments/scored?unitId=5&periodId=2
+        [HttpGet("scored")]
+        [Authorize]
+        public async Task<IActionResult> GetScoredAssignments([FromQuery] int? unitId, [FromQuery] int? periodId)
+        {
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { message = "Không xác định được người dùng!" });
+
+            if (role != "admin")
+            {
+                unitId = await _context.Auth
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.UnitId)
+                    .FirstOrDefaultAsync();
+
+                if (unitId == null || unitId == 0)
+                    return NotFound(new { message = "Không tìm thấy đơn vị!" });
+            }
+
+            var query = _context.SubCriteriaAssignment
+                .Include(a => a.Unit)
+                .Include(a => a.EvaluationPeriod)
+                .Include(a => a.SubCriteria)
+                .AsQueryable();
+
+            if (unitId.HasValue)
+                query = query.Where(a => a.UnitId == unitId.Value);
+
+            if (periodId.HasValue)
+                query = query.Where(a => a.EvaluationPeriodId == periodId.Value);
+
+            query = query.Where(a => a.EvaluatedAt != null);
+
+            var results = await query
+                .Select(a => new
+                {
+                    a.Id,
+                    PeriodId = a.EvaluationPeriod.Id,
+                    PeriodName = a.EvaluationPeriod.Name,
+                    UnitId = a.Unit.Id,
+                    UnitName = a.Unit.Name,
+                    SubCriteriaId = a.SubCriteria.Id,
+                    SubCriteriaName = a.SubCriteria.Name,
+                    a.Score,
+                    a.Comment,
+                    a.EvidenceInfo,
+                    a.EvaluatedAt
+                })
+                .OrderByDescending(a => a.EvaluatedAt)
+                .ToListAsync();
+
+            return Ok(results);
+        }
+
+        // GET: api/subcriteriaassignments/{id}
+        // Lấy chi tiết điểm đánh giá theo ID assignment
+        [HttpGet("{id}")]
+        [Authorize]
+        public async Task<IActionResult> GetAssignmentDetail(int id)
+        {
+            var assignment = await _context.SubCriteriaAssignment
+                .Include(a => a.Unit)
+                .Include(a => a.SubCriteria)
+                .Include(a => a.EvaluationPeriod)
+                .Where(a => a.Id == id)
+                .Select(a => new
+                {
+                    a.Id,
+                    SubCriteria = new
+                    {
+                        a.SubCriteria.Id,
+                        a.SubCriteria.Name,
+                        a.SubCriteria.Description,
+                        a.SubCriteria.MaxScore,
+                        a.SubCriteria.EvidenceInfo
+                    },
+                    EvaluationPeriod = new
+                    {
+                        a.EvaluationPeriod.Id,
+                        a.EvaluationPeriod.Name,
+                        a.EvaluationPeriod.StartDate,
+                        a.EvaluationPeriod.EndDate,
+                        a.EvaluationPeriod.IsLocked
+                    },
+                    Unit = new
+                    {
+                        a.Unit.Id,
+                        a.Unit.Name
+                    },
+                    a.Score,
+                    a.Comment,
+                    a.EvidenceInfo,
+                    a.EvaluatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            if (assignment == null)
+                return NotFound(new { message = "Không tìm thấy kết quả đánh giá!" });
+
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { message = "Không xác định được người dùng!" });
+
+            if (role != "admin")
+            {
+                var unitId = await _context.Auth
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.UnitId)
+                    .FirstOrDefaultAsync();
+
+                if (unitId == 0 || assignment.Unit.Id != unitId)
+                    return Forbid("Bạn không có quyền truy cập đánh giá này!");
+            }
+
+            return Ok(assignment);
+        }
+
         // POST: api/unitassignments/submit
         // Submit mới điểm đánh giá cho tiêu chí trong kỳ của đơn vị
         [HttpPost("submit")]
@@ -137,7 +259,6 @@ namespace chuyendoiso.Controllers
                 evaluatedAt = assignment.EvaluatedAt
             });
         }
-
 
         // PUT: api/unitassignments/submit/{assignmentId}
         // Chỉnh sửa kết quả đánh giá đã nộp
