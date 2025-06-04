@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using chuyendoiso.DTOs;
 using System.Security.Claims;
 using chuyendoiso.Services;
-using X.PagedList;
 
 namespace chuyendoiso.Controllers
 {
@@ -139,7 +138,7 @@ namespace chuyendoiso.Controllers
             _context.Auth.Add(user);
             await _context.SaveChangesAsync();
             await _logService.WriteLogAsync(
-                "Create User", 
+                "Tạo người dùng", 
                 $"Tạo người dùng mới: {user.Username} (ID = {user.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -210,7 +209,7 @@ namespace chuyendoiso.Controllers
                 _context.Update(existingUser);
                 await _context.SaveChangesAsync();
                 await _logService.WriteLogAsync(
-                    "Update User", 
+                    "Cập nhật người dùng", 
                     $"Cập nhật người dùng: {existingUser.Username} (ID = {existingUser.Id})", 
                     User.FindFirst(ClaimTypes.Name)?.Value
                 );
@@ -246,7 +245,7 @@ namespace chuyendoiso.Controllers
             _context.Auth.Remove(user);
             await _context.SaveChangesAsync();
             await _logService.WriteLogAsync(
-                "Delete User", 
+                "Xóa người dùng", 
                 $"Xóa người dùng: {user.Username} (ID = {user.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -289,7 +288,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Update Profile", 
+                "Cập nhật thông tin người dùng", 
                 $"Cập nhật thông tin người dùng: {user.Username} (ID = {user.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

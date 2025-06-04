@@ -142,7 +142,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Create Unit", 
+                "Tạo đơn vị", 
                 $"Tạo đơn vị: {unit.Name} (ID = {unit.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -192,7 +192,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Update Unit", 
+                "Cập nhật đơn vị", 
                 $"Cập nhật đơn vị: {existingUnit.Name} (ID = {existingUnit.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -226,7 +226,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Delete Unit",
+                "Xóa đơn vị",
                 $"Xóa đơn vị: {unit.Name} (ID = {unit.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

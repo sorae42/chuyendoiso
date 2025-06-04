@@ -101,7 +101,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Create Target Group", 
+                "Tạo nhóm chỉ tiêu", 
                 $"Tạo nhóm chỉ tiêu mới: {targetGroup.Name} (ID = {targetGroup.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -140,7 +140,7 @@ namespace chuyendoiso.Controllers
                 await _context.SaveChangesAsync();
 
                 await _logService.WriteLogAsync(
-                    "Update Target Group", 
+                    "Cập nhật nhóm chỉ tiêu", 
                     $"Cập nhật nhóm chỉ tiêu: {existingTargetGroup.Name} (ID = {existingTargetGroup.Id})", 
                     User.FindFirst(ClaimTypes.Name)?.Value
                 );
@@ -176,7 +176,7 @@ namespace chuyendoiso.Controllers
             _context.TargetGroup.Remove(targetGroup);
             await _context.SaveChangesAsync();
             await _logService.WriteLogAsync(
-                "Delete Target Group", 
+                "Xóa nhóm chỉ tiêu", 
                 $"Xóa nhóm chỉ tiêu: {targetGroup.Name} (ID = {targetGroup.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

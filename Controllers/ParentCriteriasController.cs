@@ -134,7 +134,8 @@ namespace chuyendoiso.Controllers
                 _context.ParentCriteria.Add(parent);
                 await _context.SaveChangesAsync();
 
-                await _logService.WriteLogAsync("Create Parent Criteria",
+                await _logService.WriteLogAsync(
+                    "Tạo tiêu chí cha",
                     $"Tạo tiêu chí cha: {parent.Name} (ID = {parent.Id})",
                     User.FindFirst(ClaimTypes.Name)?.Value
                 );
@@ -152,7 +153,11 @@ namespace chuyendoiso.Controllers
             }
             catch (DbUpdateException ex)
             {
-                return StatusCode(500, new { message = "Lỗi khi lưu vào cơ sở dữ liệu.", detail = ex.InnerException?.Message ?? ex.Message });
+                return StatusCode(500, new 
+                { 
+                    message = "Lỗi khi lưu vào cơ sở dữ liệu.", 
+                    detail = ex.InnerException?.Message ?? ex.Message 
+                });
             }
         }
 
@@ -210,7 +215,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Update Parent Criteria", 
+                "Cập nhật tiêu chí cha", 
                 $"Cập nhật tiêu chí cha: {existing.Name} (ID = {existing.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -244,7 +249,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Delete Parent Criteria", 
+                "Xóa tiêu chí cha", 
                 $"Xóa tiêu chí cha: {parentCriteria.Name} (ID = {parentCriteria.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

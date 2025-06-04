@@ -177,14 +177,14 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Create Council",
+                "Tạo hội đồng",
                 $"Bạn đã được phân công làm Chủ tịch hội đồng {council.Name}",
                 User.FindFirst(ClaimTypes.Name)?.Value,
                 relatedUserId: chairUser.Id
             );
 
             await _logService.WriteLogAsync(
-                "Create Council",
+                "Tạo hội đồng",
                 $"Tạo hội đồng {council.Name}, chủ tịch {chairUser.Username}",
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -225,14 +225,14 @@ namespace chuyendoiso.Controllers
 
 
             await _logService.WriteLogAsync(
-                "Add Reviewer",
+                "Thêm thành viên",
                 $"{user.Username} được thêm vào hội đồng {council.Name}",
                 User.FindFirst(ClaimTypes.Name)?.Value,
                 user.UnitId
             );
 
             await _logService.WriteLogAsync(
-                "Add Reviewer",
+                "Thêm thành viên",
                 $"Thêm đơn vị đánh giá: {user.Username} vào hội đồng {council.Name}",
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -311,7 +311,7 @@ namespace chuyendoiso.Controllers
                 }
 
                 await _logService.WriteLogAsync(
-                    "Assign Reviewer",
+                    "Phân công thành viên",
                     $"Bạn được phân công thẩm định đơn vị '{unit.Name}' với các tiêu chí con.",
                     User.FindFirst(ClaimTypes.Name)?.Value,
                     relatedUserId: reviewer.AuthId
@@ -319,7 +319,7 @@ namespace chuyendoiso.Controllers
             }
 
             await _logService.WriteLogAsync(
-                "Assign Reviewer",
+                "Phân công thành viên",
                 $"Phân công thẩm định: {reviewer.Auth?.Username}",
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -382,7 +382,7 @@ namespace chuyendoiso.Controllers
                 if (newChair != null)
                 {
                     await _logService.WriteLogAsync(
-                        "Update Chair",
+                        "Cập nhật chủ tịch hội đồng",
                         $"Cập nhật chủ tịch hội đồng: {council.Name} thành {newChair.Username}",
                         User.FindFirst(ClaimTypes.Name)?.Value,
                         relatedUserId: newChair.Id
@@ -399,14 +399,14 @@ namespace chuyendoiso.Controllers
             foreach (var memberId in memberIds)
             {
                 await _logService.WriteLogAsync(
-                    "Update Council",
+                    "Cập nhật chủ tịch hội đồng",
                     $"Hội đồng '{council.Name}' đã được cập nhật. Vui lòng kiểm tra thông tin mới.",
                     User.FindFirst(ClaimTypes.Name)?.Value,
                     relatedUserId: memberId
                 );
             }
 
-            await _logService.WriteLogAsync("Update Council",
+            await _logService.WriteLogAsync("Cập nhật chủ tịch hội đồng",
                 $"Cập nhật hội đồng: {council.Name} (ID = {council.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -447,14 +447,14 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Delete Reviewer",
+                "Xóa thành viên hội đồng",
                 $"Bạn đã bị xóa khỏi hội đồng {existing.ReviewCouncil.Name}",
                 User.FindFirst(ClaimTypes.Name)?.Value,
                 relatedUserId: existing.AuthId
             );
 
             await _logService.WriteLogAsync(
-                "Delete Reviewer", 
+                "Xóa thành viên hội đồng", 
                 $"Xóa thành viên hội đồng: {existing.Auth.Username}", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -486,7 +486,7 @@ namespace chuyendoiso.Controllers
             foreach (var reviewer in council.Reviewers)
             {
                 await _logService.WriteLogAsync(
-                    "Delete Council",
+                    "Xóa hội đồng",
                     $"Hội đồng {council.Name} mà bạn tham gia đã bị xóa.",
                     User.FindFirst(ClaimTypes.Name)?.Value,
                     relatedUserId: reviewer.AuthId
@@ -501,7 +501,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Delete Council", 
+                "Xóa hội đồng", 
                 $"Xóa hội đồng '{council.Name}'", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

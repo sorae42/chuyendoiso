@@ -178,7 +178,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Create Sub Criteria", 
+                "Tạo tiêu chí con", 
                 $"Tạo tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id}) thuộc chỉ tiêu cha: {parent.Name} ({parent.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -257,7 +257,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Update Sub Criteria", 
+                "Cập nhật tiêu chí con", 
                 $"Cập nhật tiêu chí con: {existing.Name} (ID = {existing.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value);
 
@@ -284,7 +284,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Delete Sub Criteria", 
+                "Xóa tiêu chí con", 
                 $"Xóa tiêu chí con: {subCriteria.Name} (ID = {subCriteria.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

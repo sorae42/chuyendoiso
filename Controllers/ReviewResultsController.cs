@@ -121,7 +121,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _log.WriteLogAsync(
-                "Submit Review Result",
+                "Nộp kết quả thẩm định",
                 $"Thành viên {User.Identity?.Name} đã nộp kết quả thẩm định nhiệm vụ {dto.ReviewAssignmentId}", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

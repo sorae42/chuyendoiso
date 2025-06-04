@@ -202,7 +202,7 @@ namespace chuyendoiso.Controllers
                     foreach (var user in users)
                     {
                         await _logService.WriteLogAsync(
-                            "Create Evaluation Period",
+                            "Tạo kỳ đánh giá mới",
                             $"Đơn vị của bạn đã được thêm vào kỳ đánh giá {period.Name}",
                             User.FindFirst(ClaimTypes.Name)?.Value,
                             relatedUserId: user.Id
@@ -240,7 +240,7 @@ namespace chuyendoiso.Controllers
             }
 
             await _logService.WriteLogAsync(
-                "Create Evaluation Period", 
+                "Tạo kỳ đánh giá mới", 
                 $"Tạo kỳ đánh giá: {period.Name} (ID = {period.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -297,7 +297,7 @@ namespace chuyendoiso.Controllers
                     foreach (var user in users)
                     {
                         await _logService.WriteLogAsync(
-                            "Update Evaluation Period",
+                            "Cập nhật kỳ đánh giá",
                             $"Đơn vị của bạn đã được cập nhật trong kỳ đánh giá '{existing.Name}'.",
                             User.Identity?.Name,
                             relatedUserId: user.Id
@@ -349,7 +349,7 @@ namespace chuyendoiso.Controllers
             }
 
             await _logService.WriteLogAsync(
-                "Update Evaluation Period", 
+                "Cập nhật kỳ đánh giá", 
                 $"Cập nhật kỳ đánh giá: {existing.Name} (ID = {existing.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -390,7 +390,7 @@ namespace chuyendoiso.Controllers
                 foreach (var user in users)
                 {
                     await _logService.WriteLogAsync(
-                        "Evaluation Period Deleted",
+                        "Xóa kỳ đánh giá",
                         $"Kỳ đánh giá '{period.Name}' mà đơn vị bạn tham gia đã bị xóa.",
                         User.Identity?.Name,
                         relatedUserId: user.Id
@@ -402,7 +402,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Delete Evaluation Period", 
+                "Xóa kỳ đánh giá", 
                 $"Xóa kỳ đánh giá: {period.Name} (ID = {period.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -451,7 +451,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Lock Evaluation Period", 
+                "Khóa kỳ đánh giá", 
                 $"Khóa kỳ đánh giá: {period.Name} (ID = {period.Id})", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );
@@ -479,7 +479,7 @@ namespace chuyendoiso.Controllers
             await _context.SaveChangesAsync();
 
             await _logService.WriteLogAsync(
-                "Unlock Evaluation Period", 
+                "Mở khóa kỳ đánh giá", 
                 $"Mở khóa kỳ đánh giá: {period.Name} (ID = {period.Id}) - Lý do: {dto.Reason ?? "(không có)"}",
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

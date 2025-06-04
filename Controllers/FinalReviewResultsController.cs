@@ -107,8 +107,19 @@ namespace chuyendoiso.Controllers
             _context.FinalReviewResult.Add(result);
             await _context.SaveChangesAsync();
 
+            var reviewerIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(reviewerIdStr, out int reviewerId);
+
             await _log.WriteLogAsync(
-                "Submit Final Review", 
+                "Phê duyệt kết quả thẩm định (Admin)",
+                $"Chủ tịch hội đồng duyệt kết quả cho nhiệm vụ thẩm định ID={assignment.Id} với điểm {dto.FinalScore}",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                relatedUserId: reviewerId
+            );
+
+
+            await _log.WriteLogAsync(
+                "Phê duyệt kết quả thẩm định", 
                 $"Chủ tịch hội đồng duyệt điểm thẩm định: {assignment.Id}", 
                 User.FindFirst(ClaimTypes.Name)?.Value
             );

@@ -65,9 +65,9 @@ namespace chuyendoiso.Controllers
             var jwt = GenerateJwtToken(user);
 
             await _logService.WriteLogAsync(
-                "Login", 
+                "Đăng nhập", 
                 $"Tài khoản {username} đăng nhập", 
-                username
+                User.FindFirst(ClaimTypes.Name)?.Value
             );
 
             return Ok(new { message = "Đăng nhập thành công", token = jwt, trustedToken = user.TrustedDeviceToken });
@@ -80,7 +80,11 @@ namespace chuyendoiso.Controllers
         {
             var username = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
 
-            await _logService.WriteLogAsync("Logout", $"Tài khoản {username} đã đăng xuất", username);
+            await _logService.WriteLogAsync(
+                "Đăng xuất", 
+                $"Tài khoản {username} đã đăng xuất", 
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new { message = "Đăng xuất thành công!" });
         }
@@ -117,7 +121,10 @@ namespace chuyendoiso.Controllers
             await _emailSender.SendEmailAsync(email, "Đặt lại mật khẩu",
                 $"Nhấn vào link sau để đặt lại mật khẩu: <a href='{resetLink}'>Đặt lại mật khẩu</a>");
 
-            return Ok(new { message = "Email đặt lại mật khẩu đã được gửi!" });
+            return Ok(new 
+            { 
+                message = "Email đặt lại mật khẩu đã được gửi!" 
+            });
         }
 
         // POST: api/auths/reset-password
@@ -148,7 +155,10 @@ namespace chuyendoiso.Controllers
 
             _context.SaveChanges();
 
-            return Ok(new { message = "Đặt lại mật khẩu thành công!" });
+            return Ok(new 
+            { 
+                message = "Đặt lại mật khẩu thành công!" 
+            });
         }
 
         // POST: api/auths/toggle-2fa
@@ -166,7 +176,10 @@ namespace chuyendoiso.Controllers
             user.IsTwoFactorEnabled = enable2FA;
             _context.SaveChanges();
 
-            return Ok(new { message = $"Xác thực 2 bước {(enable2FA ? "đã bật" : "đã tắt")}" });
+            return Ok(new 
+            { 
+                message = $"Xác thực 2 bước {(enable2FA ? "đã bật" : "đã tắt")}" 
+            });
         }
 
         // POST: api/auths/verify-otp
@@ -190,7 +203,12 @@ namespace chuyendoiso.Controllers
             _context.SaveChanges();
 
             var jwt = GenerateJwtToken(user);
-            return Ok(new { message = "Xác thực thành công", token = jwt, trustedToken = user.TrustedDeviceToken });
+            return Ok(new 
+            { 
+                message = "Xác thực thành công", 
+                token = jwt, 
+                trustedToken = user.TrustedDeviceToken 
+            });
         }
 
         // Method generate jwt token
