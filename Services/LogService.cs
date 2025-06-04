@@ -22,7 +22,7 @@ namespace chuyendoiso.Services
 
             var log = new ActionLog
             {
-                Username = username,
+                Username = actualUsername,
                 RelatedUserId = relatedUserId,
                 IPAddress = ipAddress,
                 Timestamp = DateTime.UtcNow,
