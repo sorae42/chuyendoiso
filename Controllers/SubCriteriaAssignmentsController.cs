@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using chuyendoiso.Data;
-using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+﻿using chuyendoiso.Data;
 using chuyendoiso.DTOs;
+using chuyendoiso.Models;
+using chuyendoiso.Services;
+using DocumentFormat.OpenXml.Bibliography;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace chuyendoiso.Controllers
 {
@@ -12,10 +15,12 @@ namespace chuyendoiso.Controllers
     public class SubCriteriaAssignmentsController : ControllerBase
     {
         private readonly chuyendoisoContext _context;
+        private readonly LogService _logService;
 
-        public SubCriteriaAssignmentsController(chuyendoisoContext context)
+        public SubCriteriaAssignmentsController(chuyendoisoContext context, LogService logService)
         {
             _context = context;
+            _logService = logService;
         }
 
         // Summary: Đơn vị xem tiêu chí được giao trong kỳ đánh giá
@@ -206,6 +211,64 @@ namespace chuyendoiso.Controllers
             return Ok(assignment);
         }
 
+        // Summary: Tạo endpoint gán tiêu chí cho đơn vị trong kỳ
+        // POST: api/subcriteriaassignments/assign-unit
+        [HttpPost("assign-unit")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> AssignUnit([FromBody] SeedAssignmentDto dto)
+        {
+            // Kiểm tra tồn tại các đối tượng liên quan
+            var subCriteria = await _context.SubCriteria.FindAsync(dto.SubCriteriaId);
+            var period = await _context.EvaluationPeriod.FindAsync(dto.PeriodId);
+            var unit = await _context.Unit.FindAsync(dto.UnitId);
+
+            if (subCriteria == null)
+                return BadRequest(new { message = "Không tìm thấy tiêu chí con!" });
+
+            if (period == null)
+                return BadRequest(new { message = "Không tìm thấy kỳ đánh giá!" });
+
+            if (unit == null)
+                return BadRequest(new { message = "Không tìm thấy đơn vị!" });
+
+            // Kiểm tra đã gán chưa
+            var exists = await _context.SubCriteriaAssignment.AnyAsync(a =>
+                a.SubCriteriaId == dto.SubCriteriaId &&
+                a.EvaluationPeriodId == dto.PeriodId &&
+                a.UnitId == dto.UnitId);
+
+            if (exists)
+                return BadRequest(new { message = "Tiêu chí đã được gán trước đó!" });
+
+            var assignment = new SubCriteriaAssignment
+            {
+                SubCriteriaId = dto.SubCriteriaId,
+                EvaluationPeriodId = dto.PeriodId,
+                UnitId = dto.UnitId
+            };
+
+            _context.SubCriteriaAssignment.Add(assignment);
+            await _context.SaveChangesAsync();
+
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out int userId);
+
+            await _logService.WriteLogAsync(
+                "Gán tiêu chí cho đơn vị",
+                $"Bạn được phân công tiêu chí '{subCriteria.Name}' trong kỳ '{period.Name}'",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                relatedUserId: userId
+            );
+
+            await _logService.WriteLogAsync(
+                "Gán tiêu chí cho đơn vị",
+                $"Phân công tiêu chí '{subCriteria.Name}' cho đơn vị '{unit.Name}' trong kỳ '{period.Name}'",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
+
+            return Ok(new { message = "Gán tiêu chí thành công!", assignmentId = assignment.Id });
+        }
+
         // POST: api/unitassignments/submit
         // Submit mới điểm đánh giá cho tiêu chí trong kỳ của đơn vị
         [HttpPost("submit")]
@@ -252,6 +315,19 @@ namespace chuyendoiso.Controllers
 
             await _context.SaveChangesAsync();
 
+            await _logService.WriteLogAsync(
+                "Nộp kết quả đánh giá",
+                $"Bạn đã nộp kết quả cho tiêu chí '{assignment.SubCriteria.Name}' trong kỳ '{assignment.EvaluationPeriod.Name}' với điểm {dto.Score}",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                relatedUserId: userId
+            );
+
+            await _logService.WriteLogAsync(
+                "Hệ thống ghi nhận kết quả",
+                $"Tiêu chí '{assignment.SubCriteria.Name}' được đánh giá bởi đơn vị '{assignment.Unit.Name}' với điểm {dto.Score}",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
+
             return Ok(new
             {
                 message = "Nộp kết quả thành công!",
@@ -268,6 +344,7 @@ namespace chuyendoiso.Controllers
         {
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
 
             if (!int.TryParse(userIdStr, out int userId))
                 return Unauthorized(new { message = "Không xác định được người dùng!" });
@@ -304,6 +381,19 @@ namespace chuyendoiso.Controllers
             assignment.EvaluatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            await _logService.WriteLogAsync(
+                "Chỉnh sửa kết quả đánh giá",
+                $"Bạn đã cập nhật kết quả cho tiêu chí '{assignment.SubCriteria.Name}' trong kỳ '{assignment.EvaluationPeriod.Name}' với điểm mới {dto.Score}",
+                User.FindFirst(ClaimTypes.Name)?.Value,
+                relatedUserId: userId
+            );
+
+            await _logService.WriteLogAsync(
+                "Hệ thống ghi nhận chỉnh sửa",
+                $"Tiêu chí '{assignment.SubCriteria.Name}' của đơn vị '{assignment.Unit.Name}' được cập nhật kết quả với điểm mới {dto.Score}",
+                User.FindFirst(ClaimTypes.Name)?.Value
+            );
 
             return Ok(new 
             { 

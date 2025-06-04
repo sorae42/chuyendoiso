@@ -80,18 +80,20 @@ namespace chuyendoiso.Models
                 context.SaveChanges();
 
                 // Seed TargetGroup
+                var targetGroup1 = new TargetGroup { Name = "TIÊU CHÍ ĐÁNH GIÁ MỨC ĐỘ CHUYỂN ĐỔI SỐ CẤP XÃ" };
+                var targetGroup2 = new TargetGroup { Name = "TIÊU CHÍ ĐÁNH GIÁ MỨC ĐỘ CHUYỂN ĐỔI SỐ CẤP HUYỆN" };
+
                 if (!context.TargetGroup.Any())
                 {
-                    context.TargetGroup.AddRange(
-                        new TargetGroup { Name = "TIÊU CHÍ ĐÁNH GIÁ MỨC ĐỘ CHUYỂN ĐỔI SỐ CẤP XÃ" },
-                        new TargetGroup { Name = "TIÊU CHÍ ĐÁNH GIÁ MỨC ĐỘ CHUYỂN ĐỔI SỐ CẤP HUYỆN" }
-                    );
+                    context.TargetGroup.AddRange(targetGroup1, targetGroup2);
                     context.SaveChanges();
                     Console.WriteLine("Seeded TargetGroup.");
                 }
                 else
                 {
-                    Console.WriteLine("TargetGroup data already exists. Skip");
+                    targetGroup1 = context.TargetGroup.FirstOrDefault(x => x.Name.Contains("CẤP XÃ"));
+                    targetGroup2 = context.TargetGroup.FirstOrDefault(x => x.Name.Contains("CẤP HUYỆN"));
+                    Console.WriteLine("TargetGroup already exists. Reused.");
                 }
 
                 // Seed EvaluationPeriod
@@ -126,27 +128,32 @@ namespace chuyendoiso.Models
                     Console.WriteLine("Seeded EvaluationUnit.");
                 }
 
-                // Seed ParentCriteria
+                var pc1 = new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroup = targetGroup1 };
+                var pc2 = new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroup = targetGroup1 };
+                var pc3 = new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroup = targetGroup1 };
+                var pc4 = new ParentCriteria { Name = "CHỈ TIÊU CHUNG", TargetGroup = targetGroup2 };
+                var pc5 = new ParentCriteria { Name = "CHÍNH QUYỀN SỐ", TargetGroup = targetGroup2 };
+                var pc6 = new ParentCriteria { Name = "KINH TẾ SỐ", TargetGroup = targetGroup2 };
+                var pc7 = new ParentCriteria { Name = "XÃ HỘI SỐ", TargetGroup = targetGroup2 };
+
                 if (!context.ParentCriteria.Any())
                 {
-                    var pcList = new List<ParentCriteria>
-                    {
-                        new ParentCriteria { Id = 1, Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 1 },
-                        new ParentCriteria { Id = 2, Name = "KINH TẾ SỐ", TargetGroupId = 1 },
-                        new ParentCriteria { Id = 3, Name = "XÃ HỘI SỐ", TargetGroupId = 1 },
-                        new ParentCriteria { Id = 4, Name = "CHỈ TIÊU CHUNG", TargetGroupId = 2 },
-                        new ParentCriteria { Id = 5, Name = "CHÍNH QUYỀN SỐ", TargetGroupId = 2 },
-                        new ParentCriteria { Id = 6, Name = "KINH TẾ SỐ", TargetGroupId = 2 },
-                        new ParentCriteria { Id = 7, Name = "XÃ HỘI SỐ", TargetGroupId = 2 }
-                    };
-
-                    context.ParentCriteria.AddRange(pcList);
+                    context.ParentCriteria.AddRange(pc1, pc2, pc3, pc4, pc5, pc6, pc7);
                     context.SaveChanges();
-                    Console.WriteLine("Seeded Parent Criteria.");
+                    Console.WriteLine("Seeded ParentCriteria.");
                 }
                 else
                 {
-                    Console.WriteLine("ParentCriteria data already exists. Skip");
+                    var all = context.ParentCriteria.Include(p => p.TargetGroup).ToList();
+                    pc1 = all.FirstOrDefault(x => x.Name == "CHÍNH QUYỀN SỐ" && x.TargetGroupId == targetGroup1.Id)!;
+                    pc2 = all.FirstOrDefault(x => x.Name == "KINH TẾ SỐ" && x.TargetGroupId == targetGroup1.Id)!;
+                    pc3 = all.FirstOrDefault(x => x.Name == "XÃ HỘI SỐ" && x.TargetGroupId == targetGroup1.Id)!;
+                    pc4 = all.FirstOrDefault(x => x.Name == "CHỈ TIÊU CHUNG" && x.TargetGroupId == targetGroup2.Id)!;
+                    pc5 = all.FirstOrDefault(x => x.Name == "CHÍNH QUYỀN SỐ" && x.TargetGroupId == targetGroup2.Id)!;
+                    pc6 = all.FirstOrDefault(x => x.Name == "KINH TẾ SỐ" && x.TargetGroupId == targetGroup2.Id)!;
+                    pc7 = all.FirstOrDefault(x => x.Name == "XÃ HỘI SỐ" && x.TargetGroupId == targetGroup2.Id)!;
+
+                    Console.WriteLine("ParentCriteria already exists. Reused.");
                 }
 
                 // Seed SubCriteria
@@ -158,7 +165,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ thủ tục hành chính đủ điều kiện theo quy định của pháp luật được cung cấp dưới hình thức dịch vụ công trực tuyến toàn trình.",
                             MaxScore = 30,
                             Description = "Cổng dịch vụ công cấp tỉnh.",
-                            ParentCriteriaId = 1,
+                            ParentCriteria = pc1,
                             EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "Tỉnh Khánh Hòa",
                             EvaluatedAt = UtcDate(2022, 3, 10)
@@ -168,7 +175,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ hồ sơ thủ tục hành chính được thực hiện trực tuyến toàn trình.",
                             MaxScore = 20,
                             Description = "CHệ thống giám sát, đo lường mức độ cung cấp và sử dụng dịch vụ Chính phủ số.",
-                            ParentCriteriaId = 1,
+                            ParentCriteria = pc1,
                             EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "Tỉnh Khánh Hòa",
                             EvaluatedAt = UtcDate(2022, 7, 5)
@@ -178,7 +185,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ xử lý văn bản, hồ sơ công việc (trừ hồ sơ mật) trên môi trường mạng.",
                             MaxScore = 70,
                             Description = "Tỷ lệ phần trăm của số văn bản được xử lý trên phần mềm quản lý văn bản và điều hành trên tổng số văn bản đến và đi của cơ quan cấp xã.",
-                            ParentCriteriaId = 1,
+                            ParentCriteria = pc1,
                             EvidenceInfo = "- Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.\n- Nghị quyết số 01/NQ- CP ngày 05/01/2024 của Chính phủ.",
                             UnitEvaluate = "Huyện Diên Khánh",
                             EvaluatedAt = UtcDate(2022, 12, 28)
@@ -188,7 +195,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ doanh nghiệp nhỏ và vừa sử dụng nền tảng số phục vụ sản xuất, kinh doanh.",
                             MaxScore = 30,
                             Description = "Tỷ lệ phần trăm số doanh nghiệp nhỏ và vừa có sử dụng nền tảng số phục vụ sản xuất, kinh doanh trên tổng số doanh nghiệp nhỏ và vừa trên địa bàn xã.",
-                            ParentCriteriaId = 2,
+                            ParentCriteria = pc2,
                             EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "TP Nha Trang",
                             EvaluatedAt = UtcDate(2023, 1, 15)
@@ -198,7 +205,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ thành viên của hợp tác xã, doanh nghiệp được định hướng, tập huấn ứng dụng công nghệ số phục vụ sản xuất, kinh doanh",
                             MaxScore = 40,
                             Description = "Tỷ lệ phần trăm của số thành viên của hợp tác xã, doanh nghiệp được định hướng, tập huấn ứng dụng công nghệ số phục vụ sản xuất, kinh doanh trên tổng số thành viên của hợp tác xã, doanh nghiệp trên địa bàn xã.",
-                            ParentCriteriaId = 2,
+                            ParentCriteria = pc2,
                             EvidenceInfo = "Công văn số 3445/BNN- VPĐP ngày 29/5/2023 của Bộ Nông nghiệp và Phát triển nông thôn.",
                             UnitEvaluate = "Huyện Diên Khánh",
                             EvaluatedAt = UtcDate(2023, 5, 20)
@@ -208,7 +215,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ dân số trưởng thành từ 15 tuổi trở lên có điện thoại thông minh.",
                             MaxScore = 50,
                             Description = "Tỷ lệ phần trăm dân số trưởng thành từ 15 tuổi trở lên có điện thoại thông minh trên tổng dân số từ 15 tuổi trở lên tại địa phương cấp xã.",
-                            ParentCriteriaId = 3,
+                            ParentCriteria = pc3,
                             EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "TP Nha Trang",
                             EvaluatedAt = UtcDate(2023, 8, 12)
@@ -218,7 +225,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ hộ gia đình được phủ mạng Internet băng rộng cáp quang.",
                             MaxScore = 10,
                             Description = "Tỷ lệ phần trăm của số hộ gia đình được phủ mạng Internet băng rộng cáp quang trên tổng số hộ gia đình tại địa phương cấp xã.",
-                            ParentCriteriaId = 3,
+                            ParentCriteria = pc3,
                             EvidenceInfo = "Quyết định số 411/QĐ- TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "TP Nha Trang",
                             EvaluatedAt = UtcDate(2023, 11, 30)
@@ -232,7 +239,7 @@ namespace chuyendoiso.Models
                         {
                             Name = "Tỷ lệ thủ tục hành chính đủ điều kiện theo quy định của pháp luật được cung cấp dưới hình thức dịch vụ công trực tuyến toàn trình.",
                             Description = "Cổng dịch vụ công cấp tỉnh.",
-                            ParentCriteriaId = 5,
+                            ParentCriteria = pc5,
                             EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "Tỉnh Khánh Hòa"
                         },
@@ -241,7 +248,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ hồ sơ thủ tục hành chính được thực hiện trực tuyến toàn trình.",
                             MaxScore = 30,
                             Description = "Hệ thống giám sát, đo lường mức độ cung cấp và sử dụng dịch vụ Chính phủ số.",
-                            ParentCriteriaId = 5,
+                            ParentCriteria = pc5,
                             EvidenceInfo = "Quyết định số 942/QĐ- TTg ngày 15/6/2021 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "Huyện Diên Khánh",
                             EvaluatedAt = UtcDate(2024, 4, 25)
@@ -251,7 +258,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ doanh nghiệp nhỏ và vừa sử dụng nền tảng số phục vụ sản xuất, kinh doanh.",
                             MaxScore = 20,
                             Description = "Tỷ lệ phần trăm của số doanh nghiệp nhỏ và vừa có sử dụng nền tảng số phục vụ sản xuất, kinh doanh trên tổng số doanh nghiệp nhỏ và vừa trên địa bàn huyện.",
-                            ParentCriteriaId = 6,
+                            ParentCriteria = pc6,
                             EvidenceInfo = "Quyết định số 411/QĐ-TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "TP Nha Trang",
                             EvaluatedAt = UtcDate(2024, 12, 5)
@@ -261,7 +268,7 @@ namespace chuyendoiso.Models
                             Name = "Tỷ lệ doanh nghiệp, hợp tác xã sử dụng hợp đồng điện tử.",
                             MaxScore = 20,
                             Description = "Tỷ lệ phần trăm của số doanh nghiệp, hợp tác xã có sử dụng hợp đồng điện tử trên tổng số doanh nghiệp, hợp tác xã trên địa bàn huyện.",
-                            ParentCriteriaId = 6,
+                            ParentCriteria = pc6,
                             EvidenceInfo = "Quyết định số 411/QĐ-TTg ngày 31/3/2022 của Thủ tướng Chính phủ.",
                             UnitEvaluate = "TP Nha Trang",
                             EvaluatedAt = UtcDate(2025, 4, 1)
@@ -270,7 +277,7 @@ namespace chuyendoiso.Models
                         {
                             Name = "Tỷ lệ trạm y tế triển khai hệ thống thông tin quản lý trạm y tế xã, phường, thị trấn theo Quyết định số 3532/QĐ-BYT ngày 12 tháng 8 năm 2020 của Bộ trưởng Bộ Y tế.",
                             Description = "Tỷ lệ phần trăm của số trạm y tế có triển khai theo Quyết định số 3532/QĐ-BYT trên tổng số trạm y tế của địa phương cấp huyện.",
-                            ParentCriteriaId = 7,
+                            ParentCriteria = pc7,
                             EvidenceInfo = "Quyết định số 942/QĐ-TTg ngày 15/6/2021 của Thủ tướng Chính phủ."
                         }
 
