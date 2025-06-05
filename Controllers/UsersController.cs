@@ -52,7 +52,8 @@ namespace chuyendoiso.Controllers
                     u.FullName,
                     u.Email,
                     u.Phone,
-                    u.IsTwoFactorEnabled
+                    u.IsTwoFactorEnabled,
+                    u.Role
                 })
                 .ToListAsync();
 
