@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using chuyendoiso.Data;
@@ -11,9 +12,11 @@ using chuyendoiso.Data;
 namespace chuyendoiso.Migrations
 {
     [DbContext(typeof(chuyendoisoContext))]
-    partial class chuyendoisoContextModelSnapshot : ModelSnapshot
+    [Migration("20250605081358_AddRejectionAndDeclineFields")]
+    partial class AddRejectionAndDeclineFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -196,9 +199,6 @@ namespace chuyendoiso.Migrations
                     b.Property<float?>("FinalScore")
                         .HasColumnType("real");
 
-                    b.Property<bool>("IsFinalFail")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsRejected")
                         .HasColumnType("boolean");
 
@@ -265,21 +265,6 @@ namespace chuyendoiso.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("DeclineAttachmentPath")
-                        .HasColumnType("text");
-
-                    b.Property<string>("DeclineReason")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("DeclinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeclined")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsUpdatedByUnit")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("ReviewerId")
                         .HasColumnType("integer");
 
@@ -341,6 +326,18 @@ namespace chuyendoiso.Migrations
 
                     b.Property<string>("Comment")
                         .HasColumnType("text");
+
+                    b.Property<string>("DeclineAttachmentPath")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DeclineReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeclinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeclined")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("ReviewAssignmentId")
                         .HasColumnType("integer");

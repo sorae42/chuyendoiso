@@ -2,7 +2,6 @@
 using chuyendoiso.DTOs;
 using chuyendoiso.Models;
 using chuyendoiso.Services;
-using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,11 +15,13 @@ namespace chuyendoiso.Controllers
     {
         private readonly chuyendoisoContext _context;
         private readonly LogService _logService;
+        private readonly IWebHostEnvironment _env;
 
-        public SubCriteriaAssignmentsController(chuyendoisoContext context, LogService logService)
+        public SubCriteriaAssignmentsController(chuyendoisoContext context, LogService logService, IWebHostEnvironment env)
         {
             _context = context;
             _logService = logService;
+            _env = env;
         }
 
         // Summary: Đơn vị xem tiêu chí được giao trong kỳ đánh giá
@@ -269,11 +270,11 @@ namespace chuyendoiso.Controllers
             return Ok(new { message = "Gán tiêu chí thành công!", assignmentId = assignment.Id });
         }
 
-        // POST: api/unitassignments/submit
+        // POST: api/subcriteriaassignments/submit
         // Submit mới điểm đánh giá cho tiêu chí trong kỳ của đơn vị
         [HttpPost("submit")]
         [Authorize]
-        public async Task<IActionResult> Submit([FromBody] SubmitCriteriaDto dto)
+        public async Task<IActionResult> Submit([FromForm] SubmitCriteriaDto dto)
         {
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
@@ -308,9 +309,25 @@ namespace chuyendoiso.Controllers
             if (assignment.EvaluationPeriod.IsLocked)
                 return BadRequest(new { message = "Kỳ đánh giá đã bị khóa!" });
 
+            string? filePath = null;
+            if (dto.EvidenceFile != null)
+            {
+                var uploads = Path.Combine(_env.WebRootPath, "uploads/evidence-files");
+                Directory.CreateDirectory(uploads);
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceFile.FileName}";
+                var fullPath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.EvidenceFile.CopyToAsync(stream);
+                }
+
+                filePath = $"/uploads/evidence-files/{fileName}";
+            }
+
             assignment.Score = dto.Score;
             assignment.Comment = dto.Comment;
-            assignment.EvidenceInfo = dto.EvidenceInfo;
+            assignment.EvidenceInfo = filePath;
             assignment.EvaluatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -336,11 +353,11 @@ namespace chuyendoiso.Controllers
             });
         }
 
-        // PUT: api/unitassignments/submit/{assignmentId}
+        // PUT: api/subcriteriaassignments/submit/{assignmentId}
         // Chỉnh sửa kết quả đánh giá đã nộp
         [HttpPut("submit/{assignmentId}")]
         [Authorize]
-        public async Task<IActionResult> Edit(int assignmentId, [FromBody] SubmitCriteriaDto dto)
+        public async Task<IActionResult> Edit(int assignmentId, [FromForm] SubmitCriteriaDto dto)
         {
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
@@ -375,9 +392,23 @@ namespace chuyendoiso.Controllers
             if (role != "admin" && assignment.UnitId != unitId)
                 return Forbid("Bạn không có quyền chỉnh sửa đánh giá này!");
 
+            string? filePath = null;
+            if (dto.EvidenceFile != null)
+            {
+                var uploads = Path.Combine(_env.WebRootPath, "uploads/evidence-files");
+                Directory.CreateDirectory(uploads);
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceFile.FileName}";
+                var fullPath = Path.Combine(uploads, fileName);
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.EvidenceFile.CopyToAsync(stream);
+                }
+                filePath = $"/uploads/evidence-files/{fileName}";
+            }
+
             assignment.Score = dto.Score;
             assignment.Comment = dto.Comment;
-            assignment.EvidenceInfo = dto.EvidenceInfo;
+            assignment.EvidenceInfo = filePath;
             assignment.EvaluatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -400,6 +431,45 @@ namespace chuyendoiso.Controllers
                 message = "Cập nhật thành công!", 
                 evaluatedAt = assignment.EvaluatedAt 
             });
+        }
+
+        [HttpPost("unit/update-criteria")]
+        [Authorize]
+        public async Task<IActionResult> MarkUpdatedByUnit([FromBody] UnitUpdateCriteriaDto dto)
+        {
+            var assignment = await _context.ReviewAssignment
+                .Include(a => a.Unit)
+                .Include(a => a.Reviewer).ThenInclude(r => r.Auth)
+                .Include(a => a.SubCriteria)
+                .FirstOrDefaultAsync(a => a.Id == dto.ReviewAssignmentId);
+
+            if (assignment == null)
+                return NotFound(new { message = "Không tìm thấy nhiệm vụ!" });
+
+            var currentUsername = User.Identity?.Name;
+            var currentUser = await _context.Auth.FirstOrDefaultAsync(a => a.Username == currentUsername);
+
+            if (currentUser?.UnitId != assignment.UnitId)
+                return Forbid("Bạn không thuộc đơn vị được phép cập nhật tiêu chí này.");
+
+            assignment.IsUpdatedByUnit = true;
+            await _context.SaveChangesAsync();
+
+            // Ghi log cho reviewer
+            await _logService.WriteLogAsync(
+                "Đơn vị cập nhật lại tiêu chí",
+                $"Đơn vị '{assignment.Unit.Name}' đã cập nhật lại tiêu chí '{assignment.SubCriteria?.Name}'.",
+                currentUsername,
+                relatedUserId: assignment.Reviewer.AuthId
+            );
+            
+            await _logService.WriteLogAsync(
+                "Đơn vị cập nhật lại sau khi bị từ chối",
+                $"Tiêu chí '{assignment.SubCriteria?.Name}' đã được đơn vị '{assignment.Unit.Name}' cập nhật lại sau khi bị từ chối.",
+                currentUsername
+            );
+
+            return Ok(new { message = "Đã cập nhật lại thông tin tiêu chí. Reviewer sẽ được thông báo để đánh giá lại." });
         }
     }
 }

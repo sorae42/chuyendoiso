@@ -103,43 +103,95 @@ namespace chuyendoiso.Controllers
             return Ok(result);
         }
 
-        // GET: api/reviewcouncil/assignments/{id}
+        // GET: api/reviewcouncil/view?reviewerId=1 or reviewCouncilId=2
         // Params: id
-        [HttpGet("assignments/{id}")]
+        // Summary: Endpoint lấy danh sách nhiệm vụ đã phân công cho thành viên
+        [HttpGet("view")]
         [Authorize]
-        public async Task<IActionResult> GetAssignments(int id)
+        public async Task<IActionResult> ViewAssignments([FromQuery] int? reviewerId, [FromQuery] int? reviewCouncilId)
         {
-            var council = await _context.ReviewCouncil
-                .Include(c => c.Reviewers)
-                    .ThenInclude(r => r.Auth)
-                .Include(c => c.Reviewers)
-                    .ThenInclude(r => r.ReviewAssignments)
-                        .ThenInclude(a => a.Unit)
-                .Include(c => c.Reviewers)
-                    .ThenInclude(r => r.ReviewAssignments)
-                        .ThenInclude(a => a.SubCriteria)
-                .FirstOrDefaultAsync(c => c.Id == id);
+            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
 
-            if (council == null)
-                return NotFound(new { message = "Không tìm thấy hội đồng!" });
-
-            var result = council.Reviewers.Select(r => new
+            // Nếu là thành viên -> chỉ trả về nhiệm vụ của mình
+            if (currentUserRole != "admin" && currentUserRole != "chair")
             {
-                ReviewerId = r.Id,
-                FullName = r.Auth.FullName,
-                Username = r.Auth.Username,
-                IsChair = r.IsChair,
-                Assignments = r.ReviewAssignments.Select(a => new
-                {
-                    a.Id,
-                    UnitId = a.UnitId,
-                    UnitName = a.Unit?.Name,
-                    SubCriteriaId = a.SubCriteriaId,
-                    SubCriteriaName = a.SubCriteria?.Name
-                }).ToList()
-            });
+                var reviewer = await _context.Reviewer
+                    .Include(r => r.Auth)
+                    .FirstOrDefaultAsync(r => r.Auth.Username == username);
 
-            return Ok(result);
+                if (reviewer == null)
+                    return NotFound(new { message = "Không tìm thấy thành viên thẩm định!" });
+
+                var assignments = await _context.ReviewAssignment
+                    .Where(a => a.ReviewerId == reviewer.Id)
+                    .Select(a => new
+                    {
+                        ReviewAssignmentId = a.Id,
+                        a.UnitId,
+                        UnitName = a.Unit.Name,
+                        a.SubCriteriaId,
+                        SubCriteriaName = a.SubCriteria.Name
+                    })
+                    .ToListAsync();
+
+                return Ok(assignments);
+            }
+
+            // Nếu là admin/chair -> trả về nhiệm vụ của reviewer hoặc hội đồng
+            if (reviewerId.HasValue)
+            {
+                var assignments = await _context.ReviewAssignment
+                    .Where(a => a.ReviewerId == reviewerId.Value)
+                    .Select(a => new
+                    {
+                        ReviewAssignmentId = a.Id,
+                        a.UnitId,
+                        UnitName = a.Unit.Name,
+                        a.SubCriteriaId,
+                        SubCriteriaName = a.SubCriteria.Name
+                    })
+                    .ToListAsync();
+
+                return Ok(assignments);
+            }
+
+            if (reviewCouncilId.HasValue)
+            {
+                var council = await _context.ReviewCouncil
+                    .Include(c => c.Reviewers)
+                        .ThenInclude(r => r.Auth)
+                    .Include(c => c.Reviewers)
+                        .ThenInclude(r => r.ReviewAssignments)
+                            .ThenInclude(a => a.Unit)
+                    .Include(c => c.Reviewers)
+                        .ThenInclude(r => r.ReviewAssignments)
+                            .ThenInclude(a => a.SubCriteria)
+                    .FirstOrDefaultAsync(c => c.Id == reviewCouncilId.Value);
+
+                if (council == null)
+                    return NotFound(new { message = "Không tìm thấy hội đồng!" });
+
+                var result = council.Reviewers.Select(r => new
+                {
+                    ReviewerId = r.Id,
+                    r.Auth.FullName,
+                    r.Auth.Username,
+                    r.IsChair,
+                    Assignments = r.ReviewAssignments.Select(a => new
+                    {
+                        a.Id,
+                        a.UnitId,
+                        UnitName = a.Unit?.Name,
+                        a.SubCriteriaId,
+                        SubCriteriaName = a.SubCriteria?.Name
+                    }).ToList()
+                });
+
+                return Ok(result);
+            }
+
+            return BadRequest(new { message = "Vui lòng truyền reviewerId hoặc reviewCouncilId nếu bạn là admin/chair." });
         }
 
         // POST: api/reviewcouncil/create
@@ -271,11 +323,11 @@ namespace chuyendoiso.Controllers
                 if (unit == null)
                     return BadRequest(new { message = "Không tìm thấy đơn vị!" });
 
-                if (currentUserRole == "chair" && reviewer.Auth?.UnitId == unit.Id)
+                if (reviewer.Auth?.UnitId == unit.Id)
                 {
                     return BadRequest(new
                     {
-                        message = $"Chủ tịch không thể chỉ định reviewer '{reviewer.Auth?.Username}' thẩm định chính đơn vị của họ ({unit.Name})."
+                        message = $"Không thể chỉ định reviewer '{reviewer.Auth?.Username}' thẩm định chính đơn vị của họ ({unit.Name})."
                     });
                 }
 

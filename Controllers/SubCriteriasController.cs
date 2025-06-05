@@ -16,11 +16,13 @@ namespace chuyendoiso.Controllers
     {
         private readonly chuyendoisoContext _context;
         private readonly LogService _logService;
+        private readonly IWebHostEnvironment _env;
 
-        public SubCriteriasController(chuyendoisoContext context, LogService logService)
+        public SubCriteriasController(chuyendoisoContext context, LogService logService, IWebHostEnvironment env)
         {
             _context = context;
             _logService = logService;
+            _env = env;
         }
 
         // GET: api/subcriterias
@@ -136,7 +138,7 @@ namespace chuyendoiso.Controllers
         // Params: Name, MaxScore, Description, ParentCriteriaId, EvidenceInfo
         [HttpPost("create")]
         [Authorize]
-        public async Task<IActionResult> Create([FromBody] SubCriteriaDto dto)
+        public async Task<IActionResult> Create([FromForm] SubCriteriaDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Name) || dto.ParentCriteriaId == null)
             {
@@ -161,12 +163,28 @@ namespace chuyendoiso.Controllers
             if (user == null || user.Unit == null)
                 return BadRequest(new { message = "Không xác định được đơn vị của người dùng!" });
 
+            string? filePath = null;
+            if (dto.EvidenceInfo != null)
+            {
+                var uploads = Path.Combine(_env.WebRootPath, "uploads/subcriteria-evidence");
+                Directory.CreateDirectory(uploads);
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceInfo.FileName}";
+                var fullPath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.EvidenceInfo.CopyToAsync(stream);
+                }
+
+                filePath = $"/uploads/subcriteria-evidence/{fileName}";
+            }
+
             var subCriteria = new SubCriteria
             {
                 Name = dto.Name,
                 MaxScore = dto.MaxScore,
                 Description = dto.Description,
-                EvidenceInfo = dto.EvidenceInfo,
+                EvidenceInfo = filePath,
                 ParentCriteriaId = parent.Id,
                 UnitEvaluate = user.Unit.Name,
                 EvaluatedAt = dto.EvaluatedAt.HasValue
@@ -198,7 +216,7 @@ namespace chuyendoiso.Controllers
         // Params: Id, Name, MaxScore, Description, ParentCriteriaId, EvidenceInfo
         [HttpPut("{id}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> Edit(int id, [FromBody] SubCriteriaDto dto)
+        public async Task<IActionResult> Edit(int id, [FromForm] SubCriteriaDto dto)
         {
             var existing = await _context.SubCriteria
                 .Include(sc => sc.ParentCriteria)
@@ -239,8 +257,20 @@ namespace chuyendoiso.Controllers
             if (!string.IsNullOrWhiteSpace(dto.Description))
                 existing.Description = dto.Description;
 
-            if (!string.IsNullOrWhiteSpace(dto.EvidenceInfo))
-                existing.EvidenceInfo = dto.EvidenceInfo;
+            if (dto.EvidenceInfo != null)
+            {
+                var uploads = Path.Combine(_env.WebRootPath, "uploads/subcriteria-evidence");
+                Directory.CreateDirectory(uploads);
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceInfo.FileName}";
+                var fullPath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.EvidenceInfo.CopyToAsync(stream);
+                }
+
+                existing.EvidenceInfo = $"/uploads/subcriteria-evidence/{fileName}";
+            }
 
             if (dto.ParentCriteriaId.HasValue && dto.ParentCriteriaId.Value != existing.ParentCriteriaId)
             {

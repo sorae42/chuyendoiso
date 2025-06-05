@@ -15,11 +15,13 @@ namespace chuyendoiso.Controllers
     {
         private readonly chuyendoisoContext _context;
         private readonly LogService _logService;
+        private readonly IWebHostEnvironment _env;
 
-        public ParentCriteriasController(chuyendoisoContext context, LogService logService)
+        public ParentCriteriasController(chuyendoisoContext context, LogService logService, IWebHostEnvironment env)
         {
             _context = context;
             _logService = logService;
+            _env = env;
         }
 
         // GET: api/parentcriterias
@@ -119,12 +121,28 @@ namespace chuyendoiso.Controllers
                 groupId = group.Id;
             }
 
+            string? filePath = null;
+            if (dto.EvidenceInfo != null)
+            {
+                var uploads = Path.Combine(_env.WebRootPath, "uploads/parentcriteria-evidence");
+                Directory.CreateDirectory(uploads);
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceInfo.FileName}";
+                var fullPath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.EvidenceInfo.CopyToAsync(stream);
+                }
+
+                filePath = $"/uploads/parentcriteria-evidence/{fileName}";
+            }
+
             var parent = new ParentCriteria
             {
                 Name = dto.Name,
                 MaxScore = dto.MaxScore,
                 Description = dto.Description,
-                EvidenceInfo = dto.EvidenceInfo,
+                EvidenceInfo = filePath,
                 TargetGroupId = groupId,
                 EvaluationPeriodId = dto.EvaluationPeriodId
             };
@@ -172,6 +190,25 @@ namespace chuyendoiso.Controllers
             if (existing == null)
                 return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
 
+            if (existing.EvaluationPeriodId.HasValue)
+            {
+                var currentPeriod = await _context.EvaluationPeriod.FindAsync(existing.EvaluationPeriodId.Value);
+                if (currentPeriod != null && currentPeriod.IsLocked)
+                    return BadRequest(new { message = "Không thể chỉnh sửa vì kỳ đánh giá hiện tại đã bị khóa!" });
+            }
+
+            if (dto.EvaluationPeriodId.HasValue && dto.EvaluationPeriodId != existing.EvaluationPeriodId)
+            {
+                var period = await _context.EvaluationPeriod.FindAsync(dto.EvaluationPeriodId.Value);
+                if (period == null)
+                    return BadRequest(new { message = "Không tìm thấy kỳ đánh giá mới!" });
+
+                if (period.IsLocked)
+                    return BadRequest(new { message = "Không thể thay đổi vì kỳ đánh giá đã bị khóa!" });
+
+                existing.EvaluationPeriodId = dto.EvaluationPeriodId.Value;
+            }
+
             if (!string.IsNullOrWhiteSpace(dto.Name) && dto.Name != existing.Name)
             {
                 bool isNameExists = await _context.ParentCriteria.AnyAsync(p =>
@@ -191,8 +228,20 @@ namespace chuyendoiso.Controllers
             if (!string.IsNullOrWhiteSpace(dto.Description))
                 existing.Description = dto.Description;
 
-            if (!string.IsNullOrWhiteSpace(dto.EvidenceInfo))
-                existing.EvidenceInfo = dto.EvidenceInfo;
+            string? filePath = null;
+            if (dto.EvidenceInfo != null)
+            {
+                var uploads = Path.Combine(_env.WebRootPath, "uploads/parentcriteria-evidence");
+                Directory.CreateDirectory(uploads);
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceInfo.FileName}";
+                var fullPath = Path.Combine(uploads, fileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                {
+                    await dto.EvidenceInfo.CopyToAsync(stream);
+                }
+                filePath = $"/uploads/parentcriteria-evidence/{fileName}";
+            }
 
             if (dto.TargetGroupId.HasValue && dto.TargetGroupId != existing.TargetGroupId)
             {
@@ -201,15 +250,6 @@ namespace chuyendoiso.Controllers
                     return BadRequest(new { message = "Không tìm thấy nhóm chỉ tiêu mới!" });
 
                 existing.TargetGroupId = newGroup.Id;
-            }
-
-            if (dto.EvaluationPeriodId.HasValue && dto.EvaluationPeriodId != existing.EvaluationPeriodId)
-            {
-                var period = await _context.EvaluationPeriod.FindAsync(dto.EvaluationPeriodId.Value);
-                if (period == null)
-                    return BadRequest(new { message = "Không tìm thấy kỳ đánh giá mới!" });
-
-                existing.EvaluationPeriodId = dto.EvaluationPeriodId.Value;
             }
 
             await _context.SaveChangesAsync();
@@ -237,13 +277,12 @@ namespace chuyendoiso.Controllers
                 return NotFound(new { message = "Không tìm thấy tiêu chí cha!" });
 
             if (parentCriteria.SubCriterias != null && parentCriteria.SubCriterias.Any())
+            {
+                if (parentCriteria.SubCriterias.Any(s => s.MaxScore > 0))
+                    return BadRequest(new { message = "Không thể xóa vì tiêu chí con đã được chấm điểm!" });
+
                 return BadRequest(new { message = "Không thể xóa vì tiêu chí cha đang chứa tiêu chí con!" });
-
-            if (parentCriteria.MaxScore > 0)
-                return BadRequest(new { message = "Không thể xóa vì tiêu chí cha đã được chấm điểm!" });
-
-            if (parentCriteria.SubCriterias.Any(s => s.MaxScore > 0))
-                return BadRequest(new { message = "Không thể xóa vì tiêu chí con đã được chấm điểm!" });
+            }
 
             _context.ParentCriteria.Remove(parentCriteria);
             await _context.SaveChangesAsync();

@@ -6,6 +6,6 @@
         public int PeriodId { get; set; }
         public float? Score { get; set; }
         public string? Comment { get; set; }
-        public string? EvidenceInfo { get; set; }
+        public IFormFile? EvidenceFile { get; set; }
     }
 }

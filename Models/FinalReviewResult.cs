@@ -14,5 +14,12 @@ namespace chuyendoiso.Models
         public float? FinalScore { get; set; }
         public string? FinalComment { get; set; }
         public string? FinalAttachmentPath { get; set; }
+
+        public bool IsRejected { get; set; } = false;
+        public string? RejectReason { get; set; }
+        public string? RejectAttachmentPath { get; set; }
+        public DateTime? RejectedAt { get; set; }
+
+        public bool IsFinalFail { get; set; } = false; // nếu = true thì cấm cấp dưới gửi nữa
     }
 }

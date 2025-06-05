@@ -15,6 +15,13 @@ namespace chuyendoiso.Models
 
         public int? SubCriteriaId { get; set; }
         public SubCriteria? SubCriteria { get; set; }
+
+        public bool IsDeclined { get; set; } = false;
+        public string? DeclineReason { get; set; }
+        public DateTime? DeclinedAt { get; set; }
+        public string? DeclineAttachmentPath { get; set; }
+
+        public bool IsUpdatedByUnit { get; set; } = false; // Đơn vị cập nhật sau từ chối
     }
 
 }
