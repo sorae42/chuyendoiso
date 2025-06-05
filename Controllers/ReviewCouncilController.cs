@@ -92,11 +92,11 @@ namespace chuyendoiso.Controllers
                 council.CreatedAt,
                 Chair = council.Reviewers
                     .Where(r => r.IsChair)
-                    .Select(r => new { r.Auth.FullName, r.Auth.Username })
+                    .Select(r => new { r.Auth.Id, r.Auth.FullName, r.Auth.Username })
                     .FirstOrDefault(),
                 Members = council.Reviewers
                     .Where(r => !r.IsChair)
-                    .Select(r => new { r.Id, r.Auth.FullName, r.Auth.Username })
+                    .Select(r => new { r.Id, UserId = r.Auth.Id, r.Auth.FullName, r.Auth.Username })
                     .ToList()
             };
 
