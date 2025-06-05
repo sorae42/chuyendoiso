@@ -91,6 +91,7 @@ namespace chuyendoiso.Controllers
         }
 
         // GET: api/subcriteriaassignments/scored?unitId=5&periodId=2
+        // Summary: Lấy danh sách các assignment đã được đánh giá
         [HttpGet("scored")]
         [Authorize]
         public async Task<IActionResult> GetScoredAssignments([FromQuery] int? unitId, [FromQuery] int? periodId)
@@ -268,6 +269,56 @@ namespace chuyendoiso.Controllers
             );
 
             return Ok(new { message = "Gán tiêu chí thành công!", assignmentId = assignment.Id });
+        }
+
+        // GET: api/subcriteriaassignments/assigned?unitId=5&periodId=2
+        // Summary: Lấy tất cả tiêu chí đã giao cho đơn vị theo kỳ (bao gồm cả chưa đánh giá)
+        [HttpGet("assigned")]
+        [Authorize]
+        public async Task<IActionResult> GetAssignedCriteria([FromQuery] int? unitId, [FromQuery] int? periodId)
+        {
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdStr, out int userId))
+                return Unauthorized(new { message = "Không xác định được người dùng!" });
+
+            if (role != "admin")
+            {
+                unitId = await _context.Auth
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.UnitId)
+                    .FirstOrDefaultAsync();
+
+                if (unitId == null || unitId == 0)
+                    return NotFound(new { message = "Không tìm thấy đơn vị!" });
+            }
+
+            var query = _context.SubCriteriaAssignment
+                .Include(a => a.SubCriteria)
+                .Include(a => a.EvaluationPeriod)
+                .Where(a => a.UnitId == unitId);
+
+            if (periodId.HasValue)
+                query = query.Where(a => a.EvaluationPeriodId == periodId.Value);
+
+            var results = await query
+                .Select(a => new
+                {
+                    SubCriteriaId = a.SubCriteria.Id,
+                    SubCriteriaName = a.SubCriteria.Name,
+                    a.SubCriteria.Description,
+                    a.SubCriteria.MaxScore,
+                    AssignmentId = a.Id,
+                    a.Score,
+                    a.Comment,
+                    a.EvidenceInfo,
+                    a.EvaluatedAt
+                })
+                .OrderBy(a => a.SubCriteriaId)
+                .ToListAsync();
+
+            return Ok(results);
         }
 
         // POST: api/subcriteriaassignments/submit
