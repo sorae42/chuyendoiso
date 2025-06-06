@@ -28,7 +28,7 @@ namespace chuyendoiso.Controllers
         // GET: api/subcriterias
         [HttpGet]
         [Authorize]
-        public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
+        public async Task<IActionResult> Index([FromQuery] int page = 1, [FromQuery] int pageSize = 500, [FromQuery] string? search = null)
         {
             page = page < 1 ? 1 : page;
             pageSize = pageSize < 1 ? 10 : pageSize;
@@ -159,9 +159,17 @@ namespace chuyendoiso.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
                 return BadRequest(new { message = "Không xác định được người dùng!" });
 
-            var user = await _context.Auth.Include(u => u.Unit).FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null || user.Unit == null)
-                return BadRequest(new { message = "Không xác định được đơn vị của người dùng!" });
+            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+            string? unitName = null;
+
+            if (role != "admin")
+            {
+                var user = await _context.Auth.Include(u => u.Unit).FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null || user.Unit == null)
+                    return BadRequest(new { message = "Không xác định được đơn vị của người dùng!" });
+
+                unitName = user.Unit.Name;
+            }
 
             string? filePath = null;
             if (dto.EvidenceFile != null)
@@ -186,7 +194,7 @@ namespace chuyendoiso.Controllers
                 Description = dto.Description,
                 EvidenceInfo = filePath,
                 ParentCriteriaId = parent.Id,
-                UnitEvaluate = user.Unit.Name,
+                UnitEvaluate = unitName,
                 EvaluatedAt = dto.EvaluatedAt.HasValue
                     ? DateTime.SpecifyKind(dto.EvaluatedAt.Value, DateTimeKind.Utc)
                     : DateTime.UtcNow

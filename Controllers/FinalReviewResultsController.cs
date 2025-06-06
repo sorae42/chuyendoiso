@@ -27,12 +27,13 @@ namespace chuyendoiso.Controllers
         // GET: api/finalreviewresults/list
         // Summary: Lấy danh sách điểm thẩm định của hội đồng
         [HttpGet("list")]
-        [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> ListFinalReviewResults()
         {
             var results = await _context.FinalReviewResult
                 .Include(r => r.ReviewAssignment)
-                .ThenInclude(a => a.Unit)
+                    .ThenInclude(a => a.Unit)
+                .Include(r => r.ReviewAssignment.SubCriteria)
                 .Select(r => new
                 {
                     r.Id,
@@ -50,7 +51,7 @@ namespace chuyendoiso.Controllers
         // GET: api/finalreviewresults/dashboard
         // Summary: Dashboard tổng hợp kết quả thẩm định (nhóm theo đơn vị)
         [HttpGet("dashboard")]
-        [Authorize(Roles = "admin")]
+        [Authorize]
         public async Task<IActionResult> Dashboard()
         {
             var data = await _context.FinalReviewResult
