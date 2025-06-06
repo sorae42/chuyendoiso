@@ -164,16 +164,16 @@ namespace chuyendoiso.Controllers
                 return BadRequest(new { message = "Không xác định được đơn vị của người dùng!" });
 
             string? filePath = null;
-            if (dto.EvidenceInfo != null)
+            if (dto.EvidenceFile != null)
             {
                 var uploads = Path.Combine(_env.WebRootPath, "uploads/subcriteria-evidence");
                 Directory.CreateDirectory(uploads);
-                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceInfo.FileName}";
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceFile.FileName}";
                 var fullPath = Path.Combine(uploads, fileName);
 
                 using (var stream = new FileStream(fullPath, FileMode.Create))
                 {
-                    await dto.EvidenceInfo.CopyToAsync(stream);
+                    await dto.EvidenceFile.CopyToAsync(stream);
                 }
 
                 filePath = $"/uploads/subcriteria-evidence/{fileName}";
@@ -257,16 +257,16 @@ namespace chuyendoiso.Controllers
             if (!string.IsNullOrWhiteSpace(dto.Description))
                 existing.Description = dto.Description;
 
-            if (dto.EvidenceInfo != null)
+            if (dto.EvidenceFile != null)
             {
                 var uploads = Path.Combine(_env.WebRootPath, "uploads/subcriteria-evidence");
                 Directory.CreateDirectory(uploads);
-                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceInfo.FileName}";
+                var fileName = $"{Guid.NewGuid()}_{dto.EvidenceFile.FileName}";
                 var fullPath = Path.Combine(uploads, fileName);
 
                 using (var stream = new FileStream(fullPath, FileMode.Create))
                 {
-                    await dto.EvidenceInfo.CopyToAsync(stream);
+                    await dto.EvidenceFile.CopyToAsync(stream);
                 }
 
                 existing.EvidenceInfo = $"/uploads/subcriteria-evidence/{fileName}";
