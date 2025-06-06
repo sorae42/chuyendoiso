@@ -432,6 +432,7 @@ namespace chuyendoiso.Controllers
             var assignment = await _context.SubCriteriaAssignment
                 .Include(a => a.EvaluationPeriod)
                 .Include(a => a.SubCriteria)
+                .Include(a => a.Unit)
                 .FirstOrDefaultAsync(a => a.Id == assignmentId);
 
             if (assignment == null)
