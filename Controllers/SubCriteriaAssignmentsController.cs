@@ -40,39 +40,43 @@ namespace chuyendoiso.Controllers
             int? unitId = null;
             if (role != "admin")
             {
-                var unitIdFromDb = await _context.Auth
+                unitId = await _context.Auth
                     .Where(u => u.Id == userId)
                     .Select(u => u.UnitId)
                     .FirstOrDefaultAsync();
 
-                if (unitIdFromDb == 0)
+                if (unitId == null || unitId == 0)
                     return NotFound(new { message = "Không tìm thấy đơn vị!" });
-
-                unitId = unitIdFromDb;
             }
 
-            var periods = await _context.EvaluationPeriod
-                .Include(p => p.ParentCriterias)
-                .ThenInclude(pc => pc.SubCriterias)
-                .Select(p => new
+            var assignmentsQuery = _context.SubCriteriaAssignment
+                .Include(a => a.SubCriteria)
+                    .ThenInclude(sc => sc.ParentCriteria)
+                .Include(a => a.Unit)
+                .Include(a => a.EvaluationPeriod)
+                .AsQueryable();
+
+            if (role != "admin")
+                assignmentsQuery = assignmentsQuery.Where(a => a.UnitId == unitId);
+
+            var assignments = await assignmentsQuery.ToListAsync();
+
+            var grouped = assignments
+                .GroupBy(a => a.EvaluationPeriod)
+                .Select(g => new
                 {
-                    p.Id,
-                    p.Name,
-                    p.StartDate,
-                    p.EndDate,
-                    SubCriterias = p.ParentCriterias
-                .SelectMany(pc => pc.SubCriterias)
-                .Where(sc => role == "admin" || _context.SubCriteriaAssignment.Any(a => a.SubCriteriaId == sc.Id && a.UnitId == unitId))
-                .Select(sc => new
-                {
-                    sc.Id,
-                    sc.Name,
-                    sc.Description,
-                    sc.MaxScore,
-                    sc.EvidenceInfo,
-                    Assignment = _context.SubCriteriaAssignment
-                        .Where(a => a.SubCriteriaId == sc.Id && (role == "admin" || a.UnitId == unitId))
-                        .Select(a => new
+                    Id = g.Key.Id,
+                    Name = g.Key.Name,
+                    StartDate = g.Key.StartDate,
+                    EndDate = g.Key.EndDate,
+                    SubCriterias = g.Select(a => new
+                    {
+                        Id = a.SubCriteria.Id,
+                        Name = a.SubCriteria.Name,
+                        Description = a.SubCriteria.Description,
+                        MaxScore = a.SubCriteria.MaxScore,
+                        EvidenceInfo = a.SubCriteria.EvidenceInfo,
+                        Assignment = new
                         {
                             a.Id,
                             a.Score,
@@ -80,14 +84,12 @@ namespace chuyendoiso.Controllers
                             a.EvidenceInfo,
                             a.EvaluatedAt,
                             UnitName = a.Unit.Name
-                        })
-                        .FirstOrDefault()
-                    })
+                        }
+                    }).ToList()
                 })
-                .Where(p => p.SubCriterias.Any())
-                .ToListAsync();
+                .ToList();
 
-            return Ok(periods);
+            return Ok(grouped);
         }
 
         // GET: api/subcriteriaassignments/scored?unitId=5&periodId=2

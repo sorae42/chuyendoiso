@@ -267,6 +267,11 @@ namespace chuyendoiso.Controllers
                 return NotFound(new { message = "Không tìm thấy kỳ đánh giá!" });
             }
 
+            if (existing.IsLocked)
+            {
+                return BadRequest(new { message = "Kỳ đánh giá đang bị khóa và không thể chỉnh sửa!" });
+            }
+
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 existing.Name = dto.Name;
 

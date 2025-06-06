@@ -188,11 +188,6 @@ namespace chuyendoiso.Controllers
 
             if (!string.IsNullOrWhiteSpace(dto.Password))
             {
-                if (string.IsNullOrWhiteSpace(dto.OldPassword) || !BCrypt.Net.BCrypt.Verify(dto.OldPassword, existingUser.Password))
-                {
-                    return BadRequest(new { message = "Mật khẩu cũ không chính xác!" });
-                }
-
                 existingUser.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
             }
 

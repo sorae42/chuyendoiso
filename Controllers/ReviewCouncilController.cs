@@ -266,6 +266,15 @@ namespace chuyendoiso.Controllers
             if (council == null || user == null)
                 return BadRequest(new { message = "Không tìm thấy hội đồng hoặc người dùng!" });
 
+            if (user.Role == "chair")
+                return BadRequest(new { message = "Không thể thêm Chủ tịch vào hội đồng với vai trò thẩm định viên!" });
+
+            bool exists = await _context.Reviewer
+                .AnyAsync(r => r.ReviewCouncilId == dto.ReviewCouncilId && r.AuthId == dto.AuthId);
+
+            if (exists)
+                return BadRequest(new { message = "Người dùng đã là thành viên của hội đồng này!" });
+
             var reviewer = new Reviewer
             {
                 ReviewCouncilId = dto.ReviewCouncilId,
@@ -483,6 +492,7 @@ namespace chuyendoiso.Controllers
         public async Task<IActionResult> DeleteReviewer(int id)
         {
             var existing = await _context.Reviewer
+                .Include(r => r.Auth)
                 .Include(r => r.ReviewAssignments)
                 .Include(r => r.ReviewCouncil)
                 .FirstOrDefaultAsync(r => r.Id == id );
@@ -494,6 +504,9 @@ namespace chuyendoiso.Controllers
             {
                 return BadRequest(new { message = "Không thể xóa thành viên đã được phân công thẩm định!" });
             }
+
+            if (existing.Auth == null)
+                return NotFound(new { message = "Không xác định được người dùng!" });
 
             _context.Reviewer.Remove(existing);
             await _context.SaveChangesAsync();
