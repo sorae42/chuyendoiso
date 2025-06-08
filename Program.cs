@@ -74,6 +74,9 @@ using (var scope = app.Services.CreateScope())
 
     var context = services.GetRequiredService<chuyendoisoContext>();
 
+    // Apply pending EF Core migrations automatically on startup
+    context.Database.Migrate();
+
     if (!context.Auth.Any(u => u.Username == "admin"))
     {
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword("admin123");

@@ -73,7 +73,7 @@ namespace chuyendoiso.Controllers
         // Summary: Chủ tịch hội đồng duyệt điểm thẩm định
         // Params: id， score, comment?, attachment?
         [HttpPost("submit")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "chair,admin")]
         public async Task<IActionResult> SubmitFinalReview([FromBody] FinalReviewResultDto dto)
         {
             var assignment = await _context.ReviewAssignment.FindAsync(dto.ReviewAssignmentId);
